@@ -1,25 +1,25 @@
 # Interface Web
 streamlit==1.31.0
 
-# NLP et Embeddings (EF2.2)
-sentence-transformers==2.3.1
-transformers==4.37.2
-torch>=2.0.0
+# NLP et Embeddings
+sentence-transformers==2.7.0
+transformers==4.40.0
+torch==2.3.0
 
-# IA Générative (EF4)
-google-generativeai==0.3.2
+# IA Générative
+google-generativeai==0.5.4
 
 # Data Processing
-pandas==2.2.0
-numpy==1.26.3
+pandas==2.2.3
+numpy==1.26.4
 
 # Visualisation
-plotly==5.18.0
-matplotlib==3.8.2
-seaborn==0.13.1
+plotly==5.22.0
+matplotlib==3.8.4
+seaborn==0.13.2
 
-# Calcul de similarité (EF2.3)
-scikit-learn==1.4.0
+# Calcul de similarité
+scikit-learn==1.4.2
 
 # Utilitaires
 python-dotenv==1.0.1
