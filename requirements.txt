@@ -2,9 +2,9 @@
 streamlit==1.31.0
 
 # NLP et Embeddings
-sentence-transformers==2.7.0
-transformers==4.40.0
-torch==2.3.1
+sentence-transformers==3.0.0
+transformers==4.44.0
+torch==2.9.0
 
 # IA Générative
 google-generativeai==0.5.4
