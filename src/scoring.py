@@ -10,12 +10,38 @@ Implemente la formule de score pondérée combinant:
 Equivalent AISCA: calcul du score de couverture des compétences
 """
 
+import re
+import unicodedata
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize(text: str) -> str:
+    """Normalise un libellé pour un matching robuste.
+
+    Pourquoi : les libellés de genres/moods divergent entre le questionnaire
+    (souvent sans accents, ex. "Comedie", "Emotionnel/Touchant") et le
+    référentiel CSV (avec accents, ex. "Comédie", "Émotionnel/Touchant"). Sans
+    normalisation, le matching échoue et les composantes genre/mood du score
+    sont neutralisées (bug audité). On retire donc les accents et on passe en
+    minuscules pour comparer sur une base commune.
+    """
+    if not text:
+        return ""
+    nfkd = unicodedata.normalize("NFKD", str(text))
+    no_accents = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return no_accents.lower().strip()
+
+
+def _split_tokens(text: str) -> List[str]:
+    """Découpe un champ multi-valeurs sur ';', ',' et '/' (pas seulement l'espace)."""
+    if not text:
+        return []
+    return [t for t in re.split(r"[;,/]", str(text)) if t.strip()]
 
 
 class ScoringSystem:
@@ -62,32 +88,44 @@ class ScoringSystem:
         user_genre_weights: Dict[str, float]
     ) -> float:
         """
-        Calcule le score basé sur les préférences de genre
-        
+        Calcule le score basé sur les préférences de genre.
+
+        IMPORTANT (correctif audit) : ce score doit recevoir la **catégorie
+        française** du film (colonne `Categorie`, ex. "Science-Fiction"), qui
+        est alignée sur les libellés du questionnaire — et NON la colonne `Genre`
+        en anglais ("Drama; Sci-Fi"), qui ne matchait jamais et neutralisait ce
+        composant (30 % du score). Le matching est rendu insensible aux accents.
+
         Args:
-            film_genres: Genres du film (ex: "Science-Fiction, Thriller")
-            user_genre_weights: Poids utilisateur par genre {genre: poids [0,1]}
-            
+            film_genres: Catégorie/genres du film (ex: "Science-Fiction").
+            user_genre_weights: Poids utilisateur par genre {genre: poids [0,1]}.
+
         Returns:
-            Score de genre normalisé [0, 1]
+            Score de genre normalisé [0, 1]. 0.5 = neutre (aucune correspondance).
         """
-        # Parser les genres du film
-        film_genre_list = [g.strip() for g in film_genres.split()]
-        
-        # Calculer le score moyen pour les genres du film
+        film_genre_list = _split_tokens(film_genres) or [film_genres]
+
+        # Index normalisé des préférences utilisateur
+        norm_user = {_normalize(g): w for g, w in user_genre_weights.items()}
+
         scores = []
         for genre in film_genre_list:
-            # Chercher le genre dans les préférences utilisateur
-            for user_genre, weight in user_genre_weights.items():
-                if genre in user_genre or user_genre in genre:
+            ng = _normalize(genre)
+            if not ng:
+                continue
+            # 1) correspondance exacte normalisée (cas nominal : Categorie FR)
+            if ng in norm_user:
+                scores.append(norm_user[ng])
+                continue
+            # 2) correspondance par inclusion (tolérance, ex. genres composés)
+            for ug, weight in norm_user.items():
+                if ng in ug or ug in ng:
                     scores.append(weight)
                     break
-        
-        # Si aucun match, score par défaut de 0.5 (neutre)
+
         if not scores:
             return 0.5
-        
-        # Retourner la moyenne des scores
+
         return float(np.mean(scores))
     
     def calculate_mood_score(
@@ -105,25 +143,24 @@ class ScoringSystem:
         Returns:
             Score de mood normalisé [0, 1]
         """
-        # Parser les moods du film
-        film_mood_list = [m.strip().lower() for m in film_mood.split()]
-        
-        # Calculer le score moyen pour les moods du film
+        # Sous-tokens normalisés du mood du film (ex: "Émotionnel/Touchant"
+        # -> {"emotionnel", "touchant"}). Matching insensible aux accents.
+        film_tokens = {_normalize(t) for t in _split_tokens(film_mood)}
+        film_tokens.discard("")
+
         scores = []
-        for mood in film_mood_list:
-            # Chercher des correspondances dans les préférences utilisateur
-            for user_mood, weight in user_mood_weights.items():
-                user_mood_lower = user_mood.lower()
-                # Match si le mood est dans la description ou vice-versa
-                if mood in user_mood_lower or any(word in mood for word in user_mood_lower.split('/')):
-                    scores.append(weight)
-                    break
-        
-        # Si aucun match, score par défaut de 0.5 (neutre)
-        if not scores:
+        matched = False
+        for user_mood, weight in user_mood_weights.items():
+            user_tokens = {_normalize(t) for t in _split_tokens(user_mood)}
+            user_tokens.discard("")
+            # Correspondance si au moins un sous-token commun
+            if film_tokens & user_tokens:
+                scores.append(weight)
+                matched = True
+
+        if not matched:
             return 0.5
-        
-        # Retourner la moyenne des scores
+
         return float(np.mean(scores))
     
     def calculate_final_score(
@@ -184,7 +221,9 @@ class ScoringSystem:
         
         for rec in recommendations:
             # Récupérer les données du film
-            film_genres = rec['genre']
+            # On utilise la CATEGORIE (française) et non la colonne `genre`
+            # (anglaise) pour matcher les préférences du questionnaire.
+            film_genres = rec.get('categorie', rec['genre'])
             film_mood = rec['mood']
             semantic_sim = rec['score_similarite']
             
@@ -271,7 +310,8 @@ class ScoringSystem:
         scores = []
         for idx in top_10_indices:
             film = referentiel.iloc[idx]
-            genre_score = self.calculate_genre_score(film['Genre'], user_genre_weights)
+            # Catégorie française alignée sur le questionnaire (cf. correctif audit)
+            genre_score = self.calculate_genre_score(film['Categorie'], user_genre_weights)
             mood_score = self.calculate_mood_score(film['Mood'], user_mood_weights)
             
             final_score = self.calculate_final_score(
