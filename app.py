@@ -273,7 +273,19 @@ def main():
                         st.toast("Initialisation des composants...")
                         nlp_engine = NLPEngine()
                         scoring_system = ScoringSystem(alpha=0.50, beta=0.30, gamma=0.20)
-                        genai = GenAIIntegration()
+                        # Mode degrade : si la cle API est absente, le coeur RAG
+                        # (retrieval + scoring) reste fonctionnel ; seules les
+                        # syntheses redigees par le LLM sont remplacees par un
+                        # resume deterministe. Resilience + demo sans cle.
+                        try:
+                            genai = GenAIIntegration()
+                            genai_available = True
+                        except Exception as genai_err:
+                            genai = None
+                            genai_available = False
+                            logger.warning(f"GenAI indisponible (mode degrade): {genai_err}")
+                            st.warning("IA générative indisponible (clé API manquante) : "
+                                       "affichage des recommandations sans les synthèses rédigées.")
                         
                         # Etape 2 - Charger la base de donnees de films
                         st.toast("Chargement du référentiel de films...")
@@ -284,9 +296,10 @@ def main():
                         user_text = questionnaire.get_text_for_analysis(responses)
                         
                         # Etape 4 - Enrichir le texte si trop court avec l'IA
-                        user_text, was_enriched = genai.enrich_short_text(user_text, min_words=15)
-                        if was_enriched:
-                            st.toast("Description enrichie par l'IA")
+                        if genai_available:
+                            user_text, was_enriched = genai.enrich_short_text(user_text, min_words=15)
+                            if was_enriched:
+                                st.toast("Description enrichie par l'IA")
                         
                         # Etape 5 - Analyse semantique avec SBERT
                         st.toast("Analyse sémantique avec SBERT...")
@@ -319,14 +332,32 @@ def main():
                         # Etape 9 - Generation avec l'IA Gemini
                         st.toast("Génération du profil et du plan...")
                         
-                        # Generer le plan de decouverte avec 1 seul appel API
-                        user_profile_summary = f"Genres préférés: {', '.join([g for g, w in sorted(genre_weights.items(), key=lambda x: x[1], reverse=True)[:3]])}. Moods: {', '.join([m for m, w in sorted(mood_weights.items(), key=lambda x: x[1], reverse=True)[:3]])}."
-                        discovery_plan = genai.generate_discovery_plan(weak_genres, top_3, user_profile_summary)
-                        
-                        # Generer le profil cinephile avec 1 seul appel API
-                        cinephile_profile = genai.generate_cinephile_profile(
-                            top_3, genre_weights, mood_weights, coverage_score
-                        )
+                        # Generer le plan de decouverte + profil (1 appel API chacun)
+                        top_genres_txt = ', '.join([g for g, w in sorted(genre_weights.items(), key=lambda x: x[1], reverse=True)[:3]])
+                        top_moods_txt = ', '.join([m for m, w in sorted(mood_weights.items(), key=lambda x: x[1], reverse=True)[:3]])
+                        if genai_available:
+                            user_profile_summary = f"Genres préférés: {top_genres_txt}. Moods: {top_moods_txt}."
+                            discovery_plan = genai.generate_discovery_plan(weak_genres, top_3, user_profile_summary)
+                            cinephile_profile = genai.generate_cinephile_profile(
+                                top_3, genre_weights, mood_weights, coverage_score
+                            )
+                        else:
+                            # Resume deterministe (sans LLM) pour le mode degrade
+                            films_txt = ", ".join(f"{f['titre']} ({f['annee']})" for f in top_3)
+                            cinephile_profile = (
+                                f"*(Synthèse automatique — IA générative non disponible)*\n\n"
+                                f"Vos genres de prédilection sont **{top_genres_txt}**, avec une "
+                                f"recherche d'ambiance **{top_moods_txt}**. Les films les plus "
+                                f"proches de votre profil sont : {films_txt}. "
+                                f"Score d'affinité global : {coverage_score:.0%}."
+                            )
+                            weak_txt = ", ".join(weak_genres[:5]) if weak_genres else "aucun en particulier"
+                            discovery_plan = (
+                                f"*(Plan automatique — IA générative non disponible)*\n\n"
+                                f"À partir de {films_txt}, élargissez vers les genres encore peu "
+                                f"explorés : **{weak_txt}**. Renseignez une clé API Gemini dans "
+                                f"`.env` pour obtenir un plan rédigé et personnalisé."
+                            )
                         
                         # Sauvegarder tous les resultats
                         st.session_state.recommendations = {
@@ -341,7 +372,11 @@ def main():
                             'cinephile_profile': cinephile_profile,
                             'genre_weights': genre_weights,
                             'mood_weights': mood_weights,
-                            'api_stats': genai.get_api_stats()
+                            'api_stats': genai.get_api_stats() if genai_available else {
+                                'api_calls_count': 0,
+                                'cache_stats': {'entries': 0, 'max_size': 0, 'usage_percent': 0},
+                                'model_name': 'indisponible (mode dégradé)'
+                            }
                         }
                         
                         st.session_state.analysis_done = True
@@ -412,7 +447,15 @@ def main():
             st.info("Généré par l'IA Gemini (1 appel API - EF4.3)")
             
             st.markdown(results['cinephile_profile'])
-            
+
+            # Traçabilité RAG : films réellement utilisés comme contexte (sources)
+            with st.expander("Sources (films ayant servi de contexte à la génération)"):
+                st.caption("Le profil est généré à partir de ces films récupérés "
+                           "par l'analyse sémantique — pas d'invention hors corpus.")
+                for f in results['top_3']:
+                    st.markdown(f"- **{f['titre']}** ({f['annee']}) — {f['genre']} "
+                                f"· score {f['score_final']:.0%}")
+
             st.markdown("---")
             st.markdown(f"**Score d'Affinité Global:** {results['coverage_score']:.1%}")
             
@@ -430,7 +473,14 @@ def main():
             st.info("Généré par l'IA Gemini (1 appel API - EF4.2)")
             
             st.markdown(results['discovery_plan'])
-            
+
+            # Traçabilité RAG des sources du plan
+            with st.expander("Sources (films de référence du plan)"):
+                st.caption("Plan ancré sur les films récupérés par AISCA. Les films "
+                           "hors top 3 cités relèvent de pistes de culture générale.")
+                for f in results['top_3']:
+                    st.markdown(f"- **{f['titre']}** ({f['annee']}) — {f['genre']}")
+
             if results['weak_genres']:
                 st.markdown("### Genres à Explorer")
                 cols = st.columns(len(results['weak_genres'][:5]))

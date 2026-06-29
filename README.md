@@ -1,85 +1,170 @@
-Projet AISCA-Cinema
-Auteurs : Anthony BOUCHER & Youcef DEROUICHE Projet : Agent Intelligent de Recommandation Cinématographique Module : IA Générative - EFREI 2025-2026 (Bloc 2)
+# AISCA-Cinema — Agent de recommandation cinématographique (RAG)
 
-Description
-AISCA-Cinema est une application web qui recommande des films en analysant le sens de vos phrases (analyse sémantique) plutôt que de simples mots-clés. Elle utilise une architecture RAG (Retrieval-Augmented Generation) combinant :
+**Auteurs** : Anthony BOUCHER & Youcef DEROUICHE
+**Module** : IA Générative — EFREI 2025-2026 (Bloc 2)
+**Certification** : RNCP40875 — Expert en Ingénierie des données (compétences C5.1 → C5.3)
 
-SBERT (Sentence-BERT) : Pour trouver mathématiquement les films correspondant à votre description.
+---
 
-Google Gemini : Une IA générative pour expliquer les recommandations et créer un profil cinéphile personnalisé.
+## 1. Besoin métier
 
-Installation et Lancement
-Suivez ces étapes pour installer le projet sur votre machine.
+Face à une offre de films pléthorique, choisir quoi regarder est coûteux en temps
+et frustrant : les moteurs par mots-clés ne comprennent pas une envie exprimée en
+langage naturel (« un film contemplatif sur la mémoire »). **AISCA-Cinema** répond
+à ce besoin de **découverte personnalisée** : l'utilisateur décrit son envie avec
+ses mots, et l'agent recommande des films pertinents **et explique pourquoi**, en
+s'appuyant sur un référentiel maîtrisé (pas d'invention).
 
-1. Prérequis techniques
-   Python installé (version 3.9 ou supérieure).
+Pourquoi la **GenAI** ici (et pas une reco classique seule) : la valeur ajoutée
+est la **compréhension sémantique** de la demande (SBERT) + une **restitution en
+langage naturel** personnalisée et pédagogique (LLM) — ce qu'un filtre par genres
+ne sait pas faire.
 
-Une clé API Google Gemini (gratuite via Google AI Studio).
+## 2. Approche : un RAG (Retrieval-Augmented Generation)
 
-2. Installation
-   Ouvrez un terminal dans le dossier du projet et exécutez les commandes suivantes :
+```
+Questionnaire ──► SBERT (embeddings) ──► similarité cosinus ──► Top films (Retrieval)
+                                                                     │
+                          Scoring pondéré (sémantique/genre/mood) ◄──┘
+                                                                     │
+                                         Gemini (Generation) ◄── contexte = films récupérés
+                                                                     │
+                                     Profil cinéphile + Plan de découverte (ancrés sur les sources)
+```
 
-Pour Windows :
+- **Retrieval** : `paraphrase-multilingual-MiniLM-L12-v2` (SBERT multilingue) +
+  similarité cosinus sur 260 films.
+- **Ranking** : score pondéré `0.50 × sémantique + 0.30 × genre + 0.20 × mood`.
+- **Generation** : Google **Gemini** rédige le profil et le plan, **uniquement à
+  partir des films récupérés** (garde-fou anti-hallucination dans les prompts).
 
-Bash
+**Pourquoi RAG plutôt que fine-tuning ou prompting seul** : le corpus de films
+évolue sans réentraînement, la génération reste **traçable** (sources = films
+récupérés), et le coût est maîtrisé (pas d'entraînement, cache des appels LLM).
 
-python -m venv venv
-venv\Scripts\activate
+## 3. Installation
+
+Prérequis : **Python 3.11**, une clé **Google Gemini** (gratuite via
+[Google AI Studio](https://aistudio.google.com/app/apikey)).
+
+```bash
+# 1. Environnement virtuel
+python -m venv .venv
+source .venv/bin/activate          # Windows : .venv\Scripts\activate
+
+# 2. Dépendances
 pip install -r requirements.txt
-Pour Mac / Linux :
+# Astuce : pour une installation plus légère sans GPU,
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   puis pip install -r requirements.txt
 
-Bash
+# 3. Configuration
+cp .env.example .env               # puis renseignez votre GEMINI_API_KEY
+```
 
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt 3. Configuration de la clé API
-L'application a besoin de votre clé Google pour la partie générative.
+> ⚠️ **Sécurité** : ne committez jamais votre `.env` (déjà gitignoré). Le
+> `.env.example` ne contient qu'un *placeholder*.
 
-Dans le dossier du projet, localisez le fichier .env.example.
+## 4. Lancement
 
-Renommez ce fichier en .env.
-
-Ouvrez-le avec un éditeur de texte et collez votre clé API à la place du texte existant : GEMINI_API_KEY=votre_cle_commencant_par_AIza...
-
-4. Lancement de l'application
-   Une fois l'installation terminée, lancez la commande suivante dans le terminal :
-
-Bash
-
+```bash
 streamlit run app.py
-L'application s'ouvrira automatiquement dans votre navigateur web par défaut.
+```
 
-Fonctionnement de l'application
-L'application suit un processus en 4 étapes :
+L'application s'ouvre dans le navigateur. Parcours en 4 étapes : **questionnaire →
+analyse sémantique → scoring → génération** (profil + plan).
 
-Acquisition : Vous remplissez un questionnaire hybride (texte libre + échelles de préférences).
+### Exemple d'entrée / sortie
 
-Analyse (NLP) : Le moteur SBERT transforme votre texte en vecteurs et cherche les films les plus proches dans notre base de données de 260 films.
+- **Entrée** (description libre) : *« Un film de science-fiction philosophique sur
+  le temps et la mémoire, visuellement spectaculaire. »* + genres SF=5, Drame=4.
+- **Sortie** (Top 3 récupéré, vérifié) : *Interstellar*, *Inception*, *The Matrix*
+  (+ profil cinéphile et plan de découverte générés et ancrés sur ces films).
 
-Scoring : Un algorithme classe les films selon une formule pondérée :
+## 5. Évaluation de la qualité (C5.3)
 
-50% : Pertinence sémantique (votre texte).
+Le dossier [`evaluation/`](evaluation/) contient un cadre d'évaluation reproductible.
 
-30% : Vos genres préférés.
+```bash
+# Évaluation quantitative du RAG (hors ligne, sans API) -> génère evaluation/RESULTS.md :
+python -m evaluation.evaluate_rag
 
-20% : L'ambiance (Mood) recherchée.
+# Figure de comparaison (matplotlib) -> evaluation/figures/rag_comparison.png :
+python -m evaluation.make_figures
 
-Génération (IA) : Google Gemini rédige une synthèse de votre profil et vous propose un plan de découverte basé sur les résultats.
+# Comparaison des paramètres de génération LLM (nécessite une clé API) :
+python -m evaluation.compare_params --cases Q01 Q04 Q09
+```
 
-Structure du projet
-app.py : Point d'entrée de l'interface graphique.
+- **Jeu de cas** : `evaluation/test_queries.json` — 15 requêtes annotées (vérité
+  terrain : films pertinents par requête).
+- **Métriques** : Precision@k, Recall@k, MRR, nDCG@k (`evaluation/metrics.py`).
+- **Grille qualitative** : pertinence, exactitude, complétude, hallucination,
+  traçabilité, ton (appliquée via `evaluation/compare_params.py`).
+- **Résultat clé** : le correctif du scoring fait passer le **nDCG@5 de 0.333 à
+  0.489 (+46,8 %)** et le **MRR de 0.59 à 0.78** (sortie de `evaluate_rag`).
 
-data/ : Contient le fichier CSV des 260 films et le fichier de sauvegarde des réponses.
+### Tests
 
-src/nlp_engine.py : Contient la logique d'analyse sémantique (SBERT).
+```bash
+pip install pytest
+pytest -q
+```
 
-src/genai_integration.py : Gère les appels à l'API Google Gemini.
+## 6. Structure du projet
 
-src/scoring.py : Contient l'algorithme de calcul des scores.
+```
+app.py                       # UI Streamlit (orchestration)
+data/films_referentiel.csv   # corpus RAG : 260 films
+src/questionnaire.py         # collecte & structuration des préférences
+src/nlp_engine.py            # SBERT : embeddings + retrieval (+ cache embeddings)
+src/scoring.py               # score pondéré sémantique/genre/mood
+src/genai_integration.py     # Gemini : génération + GenerationConfig + cache
+src/cache_manager.py         # cache disque des réponses LLM
+src/visualization.py         # graphiques Plotly
+evaluation/                  # jeu de cas, métriques, scripts d'évaluation
+scripts/                     # captures d'écran (Playwright), génération des livrables
+tests/                       # tests unitaires (pytest)
+Dockerfile                   # conteneurisation (Streamlit, torch CPU)
+```
 
-src/cache_manager.py : Système de cache pour limiter les appels API et les coûts.
+> Les livrables rédigés (rapport, slides, plan de soutenance, antisèche, dossier
+> d'audit) ne sont pas versionnés : ils sont générés au format Office par
+> `python scripts/generate_deliverables.py` (dossier `livrables/`, gitignoré).
 
-Dépannage
-Si la commande streamlit n'est pas trouvée : Vérifiez que votre environnement virtuel (venv) est bien activé.
+## 5 bis. Conteneurisation (Docker)
 
-Si vous avez une erreur de clé API : Vérifiez que le fichier se nomme bien .env (et non .env.txt) et qu'il contient votre clé valide.
+```bash
+docker build -t aisca-cinema .
+docker run -p 8501:8501 --env-file .env aisca-cinema
+```
+
+## 5 ter. Mode dégradé (résilience)
+
+Sans clé API Gemini, l'application reste utilisable : le cœur RAG (retrieval +
+scoring + visualisations) fonctionne, seules les synthèses rédigées par le LLM
+sont remplacées par un résumé déterministe. Pratique pour la démo et robuste en
+cas d'indisponibilité de l'API.
+
+## 7. Limites, biais et risques
+
+- **Corpus** : 260 films orientés « classiques » (IMDb), descriptions en anglais →
+  biais culturel et de couverture (peu de productions très récentes/nichées).
+- **Hallucination** : atténuée (prompts + traçabilité des sources) mais non nulle
+  pour les suggestions « hors top 3 » (culture générale du LLM).
+- **Dépendance API** : indisponibilité/quotas Gemini → prévoir un mode dégradé.
+- **RGPD** : les réponses libres sont stockées localement (`user_responses.json`,
+  gitignoré) ; à encadrer (consentement, durée de conservation) en production.
+
+## 8. Pistes d'industrialisation
+
+- Persister les embeddings (FAISS / base vectorielle) au lieu d'un CSV recalculé.
+- Conteneuriser (Docker) + CI (tests + éval automatique à chaque commit).
+- Monitoring qualité en continu (les métriques d'`evaluation/` comme garde-fou de
+  non-régression), supervision des coûts/latence API, A/B testing des paramètres.
+
+## 9. Dépannage
+
+- `streamlit` introuvable → vérifiez que le venv est activé.
+- Erreur de clé API → vérifiez que `.env` existe et contient une clé valide.
+- Premier lancement lent → SBERT télécharge le modèle (~uniquement la 1ʳᵉ fois).

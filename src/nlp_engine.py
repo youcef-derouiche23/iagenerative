@@ -23,6 +23,10 @@ class NLPEngine:
         self.model_name = model_name
         self.referentiel = None
         self.embeddings_cache = {}
+        # Cache des embeddings du référentiel : calculé une seule fois puis
+        # réutilisé à chaque requête (avant : ré-encodage complet à chaque
+        # analyse → latence/coût inutiles, non scalable). Cf. correctif audit.
+        self.referentiel_embeddings = None
         
         logger.info("Modèle SBERT chargé avec succès")
     
@@ -31,6 +35,7 @@ class NLPEngine:
         logger.info(f"Chargement du référentiel: {filepath}")
         
         self.referentiel = pd.read_csv(filepath)
+        self.referentiel_embeddings = None  # invalide le cache au rechargement
         self.referentiel['texte_complet'] = self.referentiel.apply(
             lambda row: self._build_film_text(row),
             axis=1
@@ -64,20 +69,29 @@ class NLPEngine:
         
         return embedding
     
-    def encode_referentiel(self) -> np.ndarray:
-        """Encode tous les films du référentiel"""
+    def encode_referentiel(self, force: bool = False) -> np.ndarray:
+        """Encode tous les films du référentiel (mémorisé après le 1er appel).
+
+        Args:
+            force: recalcule les embeddings même s'ils sont déjà en cache.
+        """
         if self.referentiel is None:
             raise ValueError("Le référentiel doit être chargé avant l'encodage")
-        
+
+        if self.referentiel_embeddings is not None and not force:
+            logger.debug("Embeddings du référentiel servis depuis le cache mémoire")
+            return self.referentiel_embeddings
+
         logger.info(f"Encodage de {len(self.referentiel)} films...")
-        
+
         embeddings = self.model.encode(
             self.referentiel['texte_complet'].tolist(),
             convert_to_numpy=True,
-            show_progress_bar=True,
+            show_progress_bar=False,
             batch_size=32
         )
-        
+
+        self.referentiel_embeddings = embeddings
         logger.info(f"Encodage terminé - Shape: {embeddings.shape}")
         return embeddings
     

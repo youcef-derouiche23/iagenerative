@@ -33,9 +33,37 @@ def _get_model_name() -> str:
     """Récupère le nom du modèle depuis st.secrets (Cloud) ou .env (local)"""
     try:
         import streamlit as st
-        return st.secrets.get("GEMINI_MODEL", "gemini-1.5-flash")
+        return st.secrets.get("GEMINI_MODEL", "gemini-2.0-flash")
     except Exception:
-        return os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        return os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
+
+def _get_generation_config() -> Dict:
+    """Construit la configuration de génération depuis l'environnement.
+
+    Exposer ces paramètres (température, top_p, top_k, max_output_tokens) est
+    indispensable pour C5.3 : ils permettent d'illustrer et de mesurer l'effet
+    d'un ajustement (cf. evaluation/compare_params.py). Sans eux, l'appel
+    `generate_content` utilisait des valeurs par défaut opaques et non ajustables.
+    """
+    def _f(name, default):
+        try:
+            return float(os.getenv(name, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _i(name, default):
+        try:
+            return int(os.getenv(name, default))
+        except (TypeError, ValueError):
+            return int(default)
+
+    return {
+        "temperature": _f("GEMINI_TEMPERATURE", 0.7),
+        "top_p": _f("GEMINI_TOP_P", 0.95),
+        "top_k": _i("GEMINI_TOP_K", 40),
+        "max_output_tokens": _i("GEMINI_MAX_OUTPUT_TOKENS", 1024),
+    }
 
 
 class GenAIIntegration:
@@ -49,10 +77,14 @@ class GenAIIntegration:
         api_key: Optional[str] = None,
         model_name: str = None,
         cache_enabled: bool = True,
-        max_cache_size: int = 100
+        max_cache_size: int = 100,
+        generation_config: Optional[Dict] = None
     ):
         self.api_key = api_key or _get_api_key()
         self.model_name = model_name or _get_model_name()
+        # Paramètres de génération ajustables (C5.3). Surchargeable par appelant
+        # (utilisé par le script de comparaison de paramètres avant/après).
+        self.generation_config = generation_config or _get_generation_config()
 
         if not self.api_key:
             raise ValueError(
@@ -61,7 +93,10 @@ class GenAIIntegration:
             )
 
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(self.model_name)
+        self.model = genai.GenerativeModel(
+            self.model_name,
+            generation_config=genai.types.GenerationConfig(**self.generation_config)
+        )
 
         # Utilise /tmp pour le cache (accessible sur Streamlit Cloud)
         self.cache = CacheManager(
@@ -72,12 +107,21 @@ class GenAIIntegration:
 
         self.api_calls_count = 0
 
-        logger.info(f"GenAI initialisé - Modèle: {self.model_name}, Cache: {cache_enabled}")
+        logger.info(
+            f"GenAI initialisé - Modèle: {self.model_name}, Cache: {cache_enabled}, "
+            f"Config: {self.generation_config}"
+        )
 
     def _call_gemini(self, prompt: str, use_cache: bool = True) -> str:
-        """Appelle l'API Gemini avec gestion du cache"""
+        """Appelle l'API Gemini avec gestion du cache.
+
+        La clé de cache intègre les paramètres de génération : deux réglages
+        différents (ex. température 0.2 vs 0.9) ne doivent pas partager la même
+        réponse cachée, sinon la comparaison avant/après serait faussée.
+        """
+        cache_model = f"{self.model_name}|{sorted(self.generation_config.items())}"
         if use_cache:
-            cached_response = self.cache.get(prompt, model=self.model_name)
+            cached_response = self.cache.get(prompt, model=cache_model)
             if cached_response:
                 logger.info("Réponse trouvée dans le cache")
                 return cached_response
@@ -88,7 +132,7 @@ class GenAIIntegration:
             result = response.text
 
             if use_cache:
-                self.cache.set(prompt, result, model=self.model_name)
+                self.cache.set(prompt, result, model=cache_model)
 
             self.api_calls_count += 1
             logger.info(f"Réponse générée ({len(result)} caractères)")
@@ -97,6 +141,17 @@ class GenAIIntegration:
         except Exception as e:
             logger.error(f"Erreur appel API Gemini: {e}")
             return f"[Erreur de génération: {str(e)}]"
+
+    # Garde-fou anti-hallucination commun à tous les prompts (C5.2/C5.3) :
+    # le LLM ne doit pas inventer de faits sur les films recommandés.
+    _ANTI_HALLUCINATION = (
+        "\n\nRÈGLES DE FIABILITÉ (impératif) :\n"
+        "- Ne fabrique AUCUN fait (date, casting, récompense) sur les films listés ; "
+        "appuie-toi uniquement sur les données fournies ci-dessus.\n"
+        "- Si une information manque, reste général plutôt que d'inventer.\n"
+        "- Toute suggestion de film hors de la liste relève de la culture générale "
+        "et doit être présentée comme une piste, non comme une certitude."
+    )
 
     def enrich_short_text(self, text: str, min_words: int = 15) -> tuple[str, bool]:
         """Enrichit conditionnellement un texte trop court"""
@@ -166,6 +221,7 @@ TÂCHE : Crée un plan de découverte cinématographique personnalisé incluant 
 Ton : Enthousiaste, pédagogique, personnalisé
 Format : Markdown avec sections claires
 Longueur : 300-400 mots maximum
+{self._ANTI_HALLUCINATION}
 
 Plan de Découverte :"""
 
@@ -205,6 +261,7 @@ TÂCHE : Rédige un profil cinéphile personnalisé (style executive summary) qu
 Ton : Professionnel mais chaleureux, précis, valorisant
 Format : Un seul paragraphe fluide
 Longueur : 150-200 mots maximum
+{self._ANTI_HALLUCINATION}
 
 Profil Cinéphile :"""
 
@@ -240,5 +297,6 @@ Justification concise et personnalisée :"""
         return {
             "api_calls_count": self.api_calls_count,
             "cache_stats": self.cache.get_stats(),
-            "model_name": self.model_name
+            "model_name": self.model_name,
+            "generation_config": self.generation_config
         }
