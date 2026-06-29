@@ -1,0 +1,110 @@
+{
+  "description": "Jeu de cas d'évaluation RAG pour AISCA-Cinema (C5.3). Chaque cas associe une requête utilisateur en langage naturel, un profil de préférences (genres/moods sur échelle 1-5 comme le questionnaire) et la vérité terrain : la liste des films du référentiel jugés pertinents. Les titres doivent correspondre EXACTEMENT à la colonne Film du CSV (validé par le script).",
+  "queries": [
+    {
+      "id": "Q01",
+      "query": "Un film de science-fiction philosophique sur le temps, la mémoire et la nature de la réalité, visuellement spectaculaire et qui fait réfléchir longtemps.",
+      "genre_prefs": {"Science-Fiction": 5, "Drame": 4},
+      "mood_prefs": {"Intellectuel/Reflexif": 5, "Contemplatif/Melancolique": 4},
+      "relevant": ["Interstellar", "Inception", "The Matrix", "A Clockwork Orange", "Stalker", "Eternal Sunshine of the Spotless Mind", "The Prestige", "Metropolis"]
+    },
+    {
+      "id": "Q02",
+      "query": "Un film d'animation japonais émouvant sur l'enfance, la perte et la guerre, avec une atmosphère poétique.",
+      "genre_prefs": {"Animation": 5, "Drame": 4},
+      "mood_prefs": {"Emotionnel/Touchant": 5, "Contemplatif/Melancolique": 4},
+      "relevant": ["Grave of the Fireflies", "Spirited Away", "Your Name.", "Princess Mononoke", "A Silent Voice: The Movie", "Howl's Moving Castle"]
+    },
+    {
+      "id": "Q03",
+      "query": "Un thriller policier sombre et tendu avec une enquête haletante sur la piste d'un tueur.",
+      "genre_prefs": {"Thriller": 5, "Horreur": 3},
+      "mood_prefs": {"Intense/Tendu": 5, "Sombre/Derangeant": 5},
+      "relevant": ["Se7en", "The Silence of the Lambs", "Psycho", "Oldboy", "City of God", "Parasite", "The Handmaiden"]
+    },
+    {
+      "id": "Q04",
+      "query": "Une histoire d'amour mélancolique et contemplative, avec des sentiments retenus et une belle photographie.",
+      "genre_prefs": {"Romance": 5, "Drame": 4},
+      "mood_prefs": {"Emotionnel/Touchant": 5, "Contemplatif/Melancolique": 5},
+      "relevant": ["In the Mood for Love", "Call Me by Your Name", "Portrait of a Lady on Fire", "Cinema Paradiso", "Casablanca"]
+    },
+    {
+      "id": "Q05",
+      "query": "Un film de guerre poignant sur le sacrifice, l'horreur des combats et l'humanité.",
+      "genre_prefs": {"Drame": 5, "Biopic": 4, "Action": 3},
+      "mood_prefs": {"Intense/Tendu": 5, "Emotionnel/Touchant": 4},
+      "relevant": ["Saving Private Ryan", "Schindler's List", "The Pianist", "Paths of Glory", "Come and See", "Hacksaw Ridge", "Apocalypse Now"]
+    },
+    {
+      "id": "Q06",
+      "query": "Une comédie touchante et intelligente qui fait rire et réfléchir sur le sens de la vie.",
+      "genre_prefs": {"Comedie": 5, "Drame": 4},
+      "mood_prefs": {"Leger/Amusant": 5, "Inspirant/Optimiste": 4},
+      "relevant": ["Life Is Beautiful", "The Intouchables", "The Truman Show", "Dead Poets Society", "Modern Times", "City Lights"]
+    },
+    {
+      "id": "Q07",
+      "query": "Un film d'horreur psychologique angoissant qui installe une tension oppressante.",
+      "genre_prefs": {"Horreur": 5, "Thriller": 4},
+      "mood_prefs": {"Sombre/Derangeant": 5, "Intense/Tendu": 5},
+      "relevant": ["The Shining", "Psycho", "The Silence of the Lambs", "The Thing", "Alien"]
+    },
+    {
+      "id": "Q08",
+      "query": "Une épopée fantastique avec une quête héroïque, de la magie et un univers immersif.",
+      "genre_prefs": {"Fantasy": 5, "Action": 4},
+      "mood_prefs": {"Energique/Dynamique": 4, "Inspirant/Optimiste": 4},
+      "relevant": ["The Lord of the Rings: The Return of the King", "The Lord of the Rings: The Fellowship of the Ring", "The Lord of the Rings: The Two Towers", "Star Wars: Episode IV - A New Hope", "Star Wars: Episode V - The Empire Strikes Back", "Harry Potter and the Deathly Hallows: Part 2"]
+    },
+    {
+      "id": "Q09",
+      "query": "Un biopic inspirant sur une personne qui surmonte l'adversité et change les choses.",
+      "genre_prefs": {"Biopic": 5, "Drame": 4},
+      "mood_prefs": {"Inspirant/Optimiste": 5, "Emotionnel/Touchant": 4},
+      "relevant": ["Hidden Figures", "The Pianist", "Lion", "Hacksaw Ridge", "The Elephant Man", "Green Book", "Schindler's List"]
+    },
+    {
+      "id": "Q10",
+      "query": "Un film de gangsters et de mafia, avec ascension criminelle, pouvoir et trahison.",
+      "genre_prefs": {"Thriller": 5, "Drame": 4, "Biopic": 3},
+      "mood_prefs": {"Intense/Tendu": 5, "Sombre/Derangeant": 4},
+      "relevant": ["The Godfather", "The Godfather Part II", "Goodfellas", "Once Upon a Time in America", "The Wolf of Wall Street", "City of God"]
+    },
+    {
+      "id": "Q11",
+      "query": "Un drame carcéral sur l'espoir, l'amitié et la dignité face à l'injustice.",
+      "genre_prefs": {"Drame": 5, "Fantasy": 3},
+      "mood_prefs": {"Emotionnel/Touchant": 5, "Inspirant/Optimiste": 4},
+      "relevant": ["The Shawshank Redemption", "The Green Mile", "Miracle in Cell No. 7"]
+    },
+    {
+      "id": "Q12",
+      "query": "Un film de super-héros spectaculaire et épique avec de grandes batailles.",
+      "genre_prefs": {"Science-Fiction": 5, "Action": 5, "Animation": 3},
+      "mood_prefs": {"Energique/Dynamique": 5, "Intense/Tendu": 4},
+      "relevant": ["Avengers: Endgame", "Avengers: Infinity War", "The Dark Knight", "Spider-Man: Into the Spider-Verse", "Spider-Man: Across the Spider-Verse"]
+    },
+    {
+      "id": "Q13",
+      "query": "Un film de samouraïs ou d'arts martiaux avec de l'action, de l'honneur et de grandes scènes de combat.",
+      "genre_prefs": {"Action": 5, "Drame": 4},
+      "mood_prefs": {"Intense/Tendu": 5, "Energique/Dynamique": 4},
+      "relevant": ["Seven Samurai", "Ran", "Harakiri", "The Good, the Bad and the Ugly", "Oldboy"]
+    },
+    {
+      "id": "Q14",
+      "query": "Un drame intense sur la passion, l'obsession et le dépassement de soi dans la musique.",
+      "genre_prefs": {"Drame": 5},
+      "mood_prefs": {"Intense/Tendu": 5, "Emotionnel/Touchant": 4},
+      "relevant": ["Whiplash"]
+    },
+    {
+      "id": "Q15",
+      "query": "Un film de voyage dans le temps avec des paradoxes temporels et de l'aventure.",
+      "genre_prefs": {"Science-Fiction": 5, "Action": 4},
+      "mood_prefs": {"Energique/Dynamique": 4, "Intellectuel/Reflexif": 4},
+      "relevant": ["Back to the Future", "Interstellar", "Terminator 2: Judgment Day"]
+    }
+  ]
+}
