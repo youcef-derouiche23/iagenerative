@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+*.docx
+*.pptx
+screenshots/
+evaluation/figures/
+evaluation/RESULTS.md
+AUDIT.md
+GAP_ANALYSIS.md
+RECAP_FINAL.md
+rapport_projet3.md
+slides_projet3.md
