@@ -55,6 +55,7 @@ evaluation/figures/
 
 # Captures d'écran générées pour la présentation
 screenshots/
+screenshots_demo/
 
 # Brouillons markdown des livrables (source de génération des .docx, hors dépôt)
 AUDIT.md
