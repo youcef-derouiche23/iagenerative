@@ -72,7 +72,7 @@ def rank_config(config, cand_idx, sims, referentiel, gw, mw):
         ordered = sorted(cand_idx, key=lambda i: sims[i], reverse=True)
         return [referentiel.iloc[i]["Film"] for i in ordered]
 
-    scorer = ScoringSystem(alpha=0.50, beta=0.30, gamma=0.20)
+    scorer = ScoringSystem(alpha=0.50, beta=0.40, gamma=0.10)  # poids calibrés (tune_weights)
     recs = []
     for i in cand_idx:
         film = referentiel.iloc[i]
@@ -114,7 +114,7 @@ def main():
     configs = {
         "A": "Sémantique seule (baseline)",
         "B": "Pondéré — genre buggé (colonne EN)",
-        "C": "Pondéré — corrigé (Categorie FR)",
+        "C": "Pondéré — corrigé + calibré 50/40/10 (Categorie FR)",
     }
     results = {c: [] for c in configs}
     per_query_rows = []
