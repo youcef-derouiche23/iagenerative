@@ -156,18 +156,18 @@ class VisualizationManager:
             y=df['Sémantique'] * 0.5,
             marker_color='rgb(255, 107, 107)'
         ))
-        
+
         fig.add_trace(go.Bar(
-            name='Genre (30%)',
+            name='Genre (40%)',
             x=df['Film'],
-            y=df['Genre'] * 0.3,
+            y=df['Genre'] * 0.4,
             marker_color='rgb(78, 205, 196)'
         ))
-        
+
         fig.add_trace(go.Bar(
-            name='Mood (20%)',
+            name='Mood (10%)',
             x=df['Film'],
-            y=df['Mood'] * 0.2,
+            y=df['Mood'] * 0.1,
             marker_color='rgb(255, 230, 109)'
         ))
         

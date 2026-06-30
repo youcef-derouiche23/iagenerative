@@ -54,8 +54,8 @@ class ScoringSystem:
     def __init__(
         self,
         alpha: float = 0.50,  # Poids de la similarité sémantique
-        beta: float = 0.30,   # Poids des préférences de genre
-        gamma: float = 0.20   # Poids des préférences de mood
+        beta: float = 0.40,   # Poids des préférences de genre (calibré, cf. tune_weights)
+        gamma: float = 0.10   # Poids des préférences de mood (départage léger)
     ):
         """
         Initialise le système de scoring avec les pondérations (1)
@@ -94,7 +94,7 @@ class ScoringSystem:
         française** du film (colonne `Categorie`, ex. "Science-Fiction"), qui
         est alignée sur les libellés du questionnaire — et NON la colonne `Genre`
         en anglais ("Drama; Sci-Fi"), qui ne matchait jamais et neutralisait ce
-        composant (30 % du score). Le matching est rendu insensible aux accents.
+        composant (40 % du score). Le matching est rendu insensible aux accents.
 
         Args:
             film_genres: Catégorie/genres du film (ex: "Science-Fiction").

@@ -272,7 +272,7 @@ def main():
                         # Etape 1 - Initialiser les composants necessaires
                         st.toast("Initialisation des composants...")
                         nlp_engine = NLPEngine()
-                        scoring_system = ScoringSystem(alpha=0.50, beta=0.30, gamma=0.20)
+                        scoring_system = ScoringSystem(alpha=0.50, beta=0.40, gamma=0.10)
                         # Mode degrade : si la cle API est absente, le coeur RAG
                         # (retrieval + scoring) reste fonctionnel ; seules les
                         # syntheses redigees par le LLM sont remplacees par un
@@ -502,10 +502,10 @@ def main():
             
             st.markdown("#### Système de Scoring")
             st.code("""
-Formule de Score Final:
-Score = 0.50 × Similarité_Sémantique 
-      + 0.30 × Score_Genre
-      + 0.20 × Score_Mood
+Formule de Score Final (poids calibrés par validation croisée):
+Score = 0.50 × Similarité_Sémantique
+      + 0.40 × Score_Genre
+      + 0.10 × Score_Mood
 
 Où tous les scores sont normalisés dans [0, 1]
             """)
