@@ -13,6 +13,7 @@ figure d'éval : evaluation/figures/*.png.
 Usage : python scripts/generate_deliverables.py
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -22,6 +23,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from pptx import Presentation
 from pptx.util import Inches as PInches, Pt as PPt
 from pptx.dml.color import RGBColor as PRGB
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "livrables"
@@ -443,109 +446,234 @@ def build_dossier():
 
 
 # ======================================================= 5. PRÉSENTATION PPTX
-def _slide_title(prs, title, subtitle):
-    s = prs.slides.add_slide(prs.slide_layouts[6])
-    box = s.shapes.add_textbox(PInches(0.7), PInches(2.0), PInches(12), PInches(1.6))
-    tf = box.text_frame; tf.word_wrap = True
-    r = tf.paragraphs[0].add_run(); r.text = title
-    r.font.size = PPt(40); r.font.bold = True; r.font.color.rgb = PACCENT
-    r2 = tf.add_paragraph().add_run(); r2.text = subtitle
-    r2.font.size = PPt(20); r2.font.color.rgb = PRGB(0x33, 0x41, 0x55)
-    box2 = s.shapes.add_textbox(PInches(0.7), PInches(5.2), PInches(12), PInches(1.2))
-    tf2 = box2.text_frame
-    r3 = tf2.paragraphs[0].add_run(); r3.text = AUTHORS
-    r3.font.size = PPt(22); r3.font.bold = True
-    r4 = tf2.add_paragraph().add_run()
-    r4.text = "Projet 3 — IA Générative · RNCP40875, Bloc 2 (C5.1 → C5.3)"
-    r4.font.size = PPt(16); r4.font.color.rgb = PRGB(0x33, 0x41, 0x55)
+# Système de design repris du modèle fourni (deck "Urban Data Explorer") :
+# fond clair, badges numérotés verts, pills, cartes arrondies, puces carrées.
+INK = PRGB(0x14, 0x28, 0x2E)      # encre (titres/texte)
+GREEN = PRGB(0x24, 0x6B, 0x63)    # vert primaire (badges, accents)
+GREEN2 = PRGB(0x3F, 0x8F, 0x84)   # vert secondaire
+MUTED = PRGB(0x5A, 0x70, 0x77)    # gris-vert (texte secondaire)
+ORANGE = PRGB(0xD2, 0x6A, 0x4E)   # accent orange (chiffres clés)
+BG = PRGB(0xF3, 0xF6, 0xF5)       # fond
+WHITE = PRGB(0xFF, 0xFF, 0xFF)
+CARD_LT = PRGB(0xDC, 0xED, 0xE9)  # carte / pill claire
+LIGHT = PRGB(0xE9, 0xF1, 0xEF)
+FT_TITLE = "Cambria"
+FT_BODY = "Calibri"
+
+IN = PInches
 
 
-def _slide_bullets(prs, title, bullets, note=None):
-    s = prs.slides.add_slide(prs.slide_layouts[6])
-    tb = s.shapes.add_textbox(PInches(0.6), PInches(0.4), PInches(12.1), PInches(0.9))
-    r = tb.text_frame.paragraphs[0].add_run(); r.text = title
-    r.font.size = PPt(30); r.font.bold = True; r.font.color.rgb = PACCENT
-    body = s.shapes.add_textbox(PInches(0.8), PInches(1.5), PInches(11.7), PInches(5.4))
-    tf = body.text_frame; tf.word_wrap = True
-    for i, b in enumerate(bullets):
+def _bg(slide):
+    slide.background.fill.solid()
+    slide.background.fill.fore_color.rgb = BG
+
+
+def _round(slide, l, t, w, h, fill, line=None):
+    sp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, IN(l), IN(t), IN(w), IN(h))
+    sp.fill.solid(); sp.fill.fore_color.rgb = fill
+    if line is None:
+        sp.line.fill.background()
+    else:
+        sp.line.color.rgb = line; sp.line.width = PPt(1)
+    sp.shadow.inherit = False
+    return sp
+
+
+def _sq(slide, l, t, fill, size=0.16):
+    sp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, IN(l), IN(t), IN(size), IN(size))
+    sp.fill.solid(); sp.fill.fore_color.rgb = fill; sp.line.fill.background()
+    sp.shadow.inherit = False
+    return sp
+
+
+def _txt(slide, l, t, w, h, text, size, color, font=FT_BODY, bold=False,
+         align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP):
+    tb = slide.shapes.add_textbox(IN(l), IN(t), IN(w), IN(h))
+    tf = tb.text_frame; tf.word_wrap = True; tf.vertical_anchor = anchor
+    for i, ln in enumerate(str(text).split("\n")):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        run = p.add_run(); run.text = "•  " + b; run.font.size = PPt(20); p.space_after = PPt(10)
-    if note:
-        rr = tf.add_paragraph().add_run(); rr.text = note
-        rr.font.size = PPt(16); rr.font.italic = True; rr.font.color.rgb = PACCENT
+        p.alignment = align
+        r = p.add_run(); r.text = ln
+        r.font.name = font; r.font.size = PPt(size); r.font.bold = bold
+        r.font.color.rgb = color
+    return tb
 
 
-def _slide_image(prs, title, img, caption=None, bullets=None):
-    s = prs.slides.add_slide(prs.slide_layouts[6])
-    tb = s.shapes.add_textbox(PInches(0.6), PInches(0.3), PInches(12.1), PInches(0.8))
-    r = tb.text_frame.paragraphs[0].add_run(); r.text = title
-    r.font.size = PPt(28); r.font.bold = True; r.font.color.rgb = PACCENT
-    if img and Path(img).exists():
-        if bullets:
-            s.shapes.add_picture(str(img), PInches(0.5), PInches(1.3), height=PInches(5.4))
-            body = s.shapes.add_textbox(PInches(8.0), PInches(1.5), PInches(5.0), PInches(5.0))
-            tf = body.text_frame; tf.word_wrap = True
-            for i, b in enumerate(bullets):
-                p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-                run = p.add_run(); run.text = "•  " + b; run.font.size = PPt(16); p.space_after = PPt(8)
+def _header(slide, num, title, tag=None):
+    """Bandeau : badge numéroté + titre + pill (comme le modèle)."""
+    b = _round(slide, 0.6, 0.55, 0.62, 0.62, GREEN)
+    tf = b.text_frame; tf.word_wrap = False; tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+    r = p.add_run(); r.text = str(num)
+    r.font.name = FT_TITLE; r.font.size = PPt(24); r.font.bold = True; r.font.color.rgb = WHITE
+    _txt(slide, 1.4, 0.5, 8.6, 0.75, title, 27, INK, font=FT_TITLE, bold=True,
+         anchor=MSO_ANCHOR.MIDDLE)
+    if tag:
+        pill = _round(slide, 10.05, 0.66, 2.68, 0.5, CARD_LT)
+        tfp = pill.text_frame; tfp.vertical_anchor = MSO_ANCHOR.MIDDLE
+        pp = tfp.paragraphs[0]; pp.alignment = PP_ALIGN.CENTER
+        rp = pp.add_run(); rp.text = tag
+        rp.font.name = FT_BODY; rp.font.size = PPt(12); rp.font.bold = True; rp.font.color.rgb = GREEN
+    # filet vert sous le bandeau
+    _round(slide, 0.6, 1.4, 12.13, 0.03, GREEN)
+
+
+def _bullets(slide, items, top=1.9, x=0.9, w=11.6, gap=1.02, sq=ORANGE):
+    for i, it in enumerate(items):
+        y = top + i * gap
+        _sq(slide, x, y + 0.06, sq)
+        if isinstance(it, (tuple, list)):
+            _txt(slide, x + 0.4, y - 0.05, w, 0.45, it[0], 18, INK, bold=True)
+            _txt(slide, x + 0.4, y + 0.34, w, 0.55, it[1], 14, MUTED)
         else:
-            s.shapes.add_picture(str(img), PInches(2.2), PInches(1.3), height=PInches(5.2))
-    if caption:
-        cap = s.shapes.add_textbox(PInches(0.6), PInches(6.8), PInches(12), PInches(0.5))
-        rr = cap.text_frame.paragraphs[0].add_run(); rr.text = caption
-        rr.font.size = PPt(14); rr.font.italic = True
+            _txt(slide, x + 0.4, y - 0.02, w, 0.7, it, 17, INK)
+
+
+def _stat_cards(slide, stats, top=4.4):
+    """Rangée de cartes chiffres (label + valeur en accent)."""
+    n = len(stats); gapx = 0.3
+    w = (12.13 - gapx * (n - 1)) / n
+    for i, (val, label, color) in enumerate(stats):
+        x = 0.6 + i * (w + gapx)
+        _round(slide, x, top, w, 1.6, WHITE, line=CARD_LT)
+        _txt(slide, x, top + 0.22, w, 0.7, val, 32, color, font=FT_TITLE, bold=True,
+             align=PP_ALIGN.CENTER)
+        _txt(slide, x, top + 1.02, w, 0.5, label, 12, MUTED, align=PP_ALIGN.CENTER)
+
+
+def _image_card(slide, img, l, t, w, h):
+    if img and Path(img).exists():
+        _round(slide, l - 0.12, t - 0.12, w + 0.24, h + 0.24, WHITE, line=CARD_LT)
+        slide.shapes.add_picture(str(img), IN(l), IN(t), height=IN(h))
+
+
+def _new(prs, layout):
+    s = prs.slides.add_slide(layout); _bg(s); return s
 
 
 def build_pptx():
-    prs = Presentation(); prs.slide_width = PInches(13.333); prs.slide_height = PInches(7.5)
-    _slide_title(prs, "AISCA-Cinema", "Agent de recommandation cinématographique (RAG)")
-    _slide_bullets(prs, "1. Besoin métier (C5.1)", [
-        "Trop de films : choisir est coûteux et frustrant.",
-        "Les filtres par mots-clés ne comprennent pas une envie en langage naturel.",
-        "Cible : un spectateur qui décrit une envie, pas un titre.",
-        "Valeur : recommander ET expliquer, à partir d'un référentiel maîtrisé.",
-    ], note="Cas d'usage cohérent avec le besoin métier → C5.1")
-    _slide_image(prs, "2. Architecture RAG", SHOTS / "01_questionnaire.png",
-                 caption="Questionnaire → SBERT (retrieval) → scoring → Gemini (génération ancrée).",
-                 bullets=["Retrieval : SBERT multilingue + cosinus (260 films).",
-                          "Ranking : 0.50 sémantique + 0.40 genre + 0.10 mood.",
-                          "Generation : Gemini, ancrée sur les films récupérés.",
-                          "Interface Streamlit accessible."])
-    _slide_bullets(prs, "3. Choix techniques", [
-        "RAG : corpus évolutif, génération traçable, coût maîtrisé.",
-        f"Embeddings vs mots-clés : SBERT bat TF-IDF de {NUM['tfidf_gain']} % (requêtes FR / films EN).",
-        "Fine-tuning écarté (coût, opacité) ; prompting seul écarté (hallucination).",
-        "Coûts maîtrisés : cache + retry/backoff + 2 appels/session.",
-    ], note="Solution pertinente et adaptée au contexte → C5.2")
-    _slide_image(prs, "4. Démo — Top 3 recommandations", SHOTS / "02_top3.png",
-                 caption="Sortie réelle : Top 3 + décomposition du score (sémantique / genre / mood).")
-    _slide_image(prs, "5. Démo — Visualisations", SHOTS / "03_visualisations.png",
-                 caption="Profils par genre et ambiance ; score pondéré 50/40/10 par film.")
-    _slide_image(prs, "6. Évaluation (C5.3) — avant / après", FIGS / "rag_comparison.png",
-                 caption=f"15 requêtes annotées. Correctif : nDCG@5 {NUM['ndcg_sem']}→{NUM['ndcg_cal']} "
-                         f"({NUM['gain_ndcg']} %), MRR {NUM['mrr_sem']}→{NUM['mrr_cal']}.",
-                 bullets=["Métriques : Precision@k, Recall@k, MRR, nDCG.",
-                          "Barre orange (genre buggé) ≈ sémantique : preuve du bug.",
-                          "Poids 50/40/10 validés par grid-search.",
-                          "LLM-as-judge + comparaison de température (0.2 vs 0.9)."])
-    _slide_bullets(prs, "7. Robustesse · Sécurité · Limites", [
-        "Résilience : retry/backoff sur quota 429 + mode dégradé sans clé.",
-        "Gouvernance : safety_settings + garde-fou anti-prompt-injection.",
-        "Observabilité : suivi tokens / coût / latence.",
-        "Limites : corpus 260 films EN, hallucination résiduelle, quotas free tier.",
+    # Deck vierge : le système de design ci-dessus applique explicitement la
+    # palette et les polices du modèle fourni (Urban Data Explorer), donc le
+    # rendu reprend le même style sans dépendre du fichier source (évite aussi
+    # les parties orphelines d'un template dont on retirerait les slides).
+    prs = Presentation()
+    layout = prs.slide_layouts[6]
+    prs.slide_width = IN(13.333); prs.slide_height = IN(7.5)
+
+    # --- Slide 1 : titre ---
+    s = _new(prs, layout)
+    _round(s, 0.9, 2.15, 0.18, 1.9, GREEN)  # barre d'accent verticale
+    _txt(s, 1.3, 2.05, 11, 1.3, "AISCA-Cinema", 52, INK, font=FT_TITLE, bold=True)
+    _txt(s, 1.32, 3.35, 11.4, 0.8,
+         "Agent de recommandation cinématographique (RAG)", 24, GREEN, font=FT_TITLE)
+    pill = _round(s, 1.32, 4.5, 4.6, 0.55, CARD_LT)
+    tfp = pill.text_frame; tfp.vertical_anchor = MSO_ANCHOR.MIDDLE
+    pp = tfp.paragraphs[0]; pp.alignment = PP_ALIGN.CENTER
+    rp = pp.add_run(); rp.text = "Projet 3 · IA Générative · Bloc 2"
+    rp.font.name = FT_BODY; rp.font.size = PPt(13); rp.font.bold = True; rp.font.color.rgb = GREEN
+    _txt(s, 1.32, 5.5, 11, 0.5, AUTHORS, 20, INK, bold=True)
+    _txt(s, 1.32, 6.0, 11, 0.5, "RNCP40875 — Expert en Ingénierie des données (C5.1 → C5.3)",
+         14, MUTED)
+
+    # --- Slide 2 : besoin métier ---
+    s = _new(prs, layout)
+    _header(s, 2, "Besoin métier", "🎯 C5.1")
+    _bullets(s, [
+        ("Trop de films, choix coûteux", "Les filtres par mots-clés ne comprennent pas une envie en langage naturel."),
+        ("Cible", "Un spectateur qui décrit une envie… mais pas un titre précis."),
+        ("Valeur", "Recommander ET expliquer, à partir d'un référentiel maîtrisé."),
+        ("Pourquoi la GenAI", "Compréhension sémantique + restitution personnalisée, hors de portée d'un simple filtre."),
     ])
-    _slide_bullets(prs, "8. Industrialisation", [
-        "Index vectoriel FAISS + embeddings persistés (faits).",
-        "Docker + CI GitHub Actions (tests à chaque push).",
-        "Monitoring coûts/latence (instrumenté).",
-        "A/B testing des paramètres de génération.",
+
+    # --- Slide 3 : architecture RAG ---
+    s = _new(prs, layout)
+    _header(s, 3, "Architecture RAG", "🧭 Vue d'ensemble")
+    steps = ["Questionnaire", "SBERT", "Scoring", "Gemini"]
+    x = 0.9; cw = 2.5; gap = 0.55
+    for i, st in enumerate(steps):
+        cx = x + i * (cw + gap)
+        c = _round(s, cx, 1.95, cw, 0.95, GREEN if i in (1, 3) else CARD_LT)
+        tf = c.text_frame; tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        pp = tf.paragraphs[0]; pp.alignment = PP_ALIGN.CENTER
+        r = pp.add_run(); r.text = st; r.font.name = FT_BODY; r.font.size = PPt(15)
+        r.font.bold = True; r.font.color.rgb = WHITE if i in (1, 3) else INK
+        if i < len(steps) - 1:
+            _txt(s, cx + cw, 1.95, gap, 0.95, "→", 22, GREEN, bold=True,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    _txt(s, 0.9, 3.05, 11.6, 0.4, "Retrieval (récupération sémantique)  →  Generation (synthèse ancrée)",
+         13, MUTED)
+    _image_card(s, SHOTS / "01_questionnaire.png", 4.55, 3.7, 4.2, 3.3)
+    _txt(s, 0.9, 3.7, 3.4, 3.2,
+         "• Embeddings SBERT multilingue + cosinus (260 films)\n\n"
+         "• Score 0.50 sém. + 0.40 genre + 0.10 mood\n\n"
+         "• Génération Gemini ancrée sur les sources\n\n"
+         "• Interface Streamlit accessible", 14, INK)
+
+    # --- Slide 4 : choix techniques ---
+    s = _new(prs, layout)
+    _header(s, 4, "Choix techniques", "⚙️ C5.2")
+    _bullets(s, [
+        ("RAG", "Corpus évolutif sans réentraînement, génération traçable, coût maîtrisé."),
+        ("vs Fine-tuning / Prompting seul", "Écartés : coût & opacité / risque d'hallucination sans ancrage."),
+        (f"Embeddings vs mots-clés : SBERT +{NUM['tfidf_gain']} %",
+         "Baseline TF-IDF s'effondre (requêtes FR / films EN) : seul le multilingue fait le pont."),
+        ("Coûts maîtrisés", "Cache + retry/backoff + 2 appels API par session."),
     ])
-    _slide_bullets(prs, "9. Conclusion — compétences démontrées", [
-        "C5.1 : cas d'usage justifié et gouverné.",
-        "C5.2 : solution RAG fonctionnelle, accessible, résiliente.",
-        f"C5.3 : évaluation chiffrée avec optimisation prouvée ({NUM['gain_ndcg']} % nDCG).",
-        "Merci — questions ?",
+
+    # --- Slide 5 : démo Top 3 ---
+    s = _new(prs, layout)
+    _header(s, 5, "Démo — Top 3 recommandations", "▶️ Live")
+    _image_card(s, SHOTS / "02_top3.png", 3.4, 1.75, 6.5, 5.1)
+    _txt(s, 0.9, 6.75, 11.6, 0.5,
+         "Sortie réelle : Top 3 + décomposition du score (sémantique / genre / mood).",
+         13, MUTED, align=PP_ALIGN.CENTER)
+
+    # --- Slide 6 : visualisations ---
+    s = _new(prs, layout)
+    _header(s, 6, "Démo — Visualisations", "📊 UX")
+    _image_card(s, SHOTS / "03_visualisations.png", 3.4, 1.75, 6.5, 5.1)
+    _txt(s, 0.9, 6.75, 11.6, 0.5,
+         "Profils par genre et ambiance ; score pondéré 50/40/10 par film.",
+         13, MUTED, align=PP_ALIGN.CENTER)
+
+    # --- Slide 7 : évaluation (chiffres) ---
+    s = _new(prs, layout)
+    _header(s, 7, "Évaluation — avant / après", "📈 C5.3")
+    _image_card(s, FIGS / "rag_comparison.png", 0.7, 1.75, 6.6, 3.9)
+    _txt(s, 7.6, 1.9, 5.2, 2.6,
+         "• 15 requêtes annotées (vérité terrain)\n\n"
+         "• Barre orange (genre buggé) ≈ sémantique : preuve du bug\n\n"
+         "• Poids 50/40/10 validés par grid-search\n\n"
+         "• LLM-as-judge + comparaison de température", 14, INK)
+    _stat_cards(s, [
+        (f"{NUM['ndcg_sem']}→{NUM['ndcg_cal']}", "nDCG@5", GREEN),
+        (f"{NUM['gain_ndcg']} %", "gain nDCG", ORANGE),
+        (f"{NUM['mrr_sem']}→{NUM['mrr_cal']}", "MRR", GREEN),
+        (f"+{NUM['tfidf_gain'].lstrip('+')} %", "vs TF-IDF", ORANGE),
+    ], top=5.75)
+
+    # --- Slide 8 : robustesse / sécurité / limites ---
+    s = _new(prs, layout)
+    _header(s, 8, "Robustesse · Sécurité · Limites", "🛡️ Prod")
+    _bullets(s, [
+        ("Résilience", "Retry/backoff sur quota 429 + mode dégradé sans clé."),
+        ("Gouvernance", "safety_settings + garde-fou anti-prompt-injection."),
+        ("Observabilité", "Suivi tokens / coût estimé / latence par appel."),
+        ("Limites assumées", "Corpus 260 films EN, hallucination résiduelle, quotas free tier."),
     ])
+
+    # --- Slide 9 : industrialisation + conclusion ---
+    s = _new(prs, layout)
+    _header(s, 9, "Industrialisation & conclusion", "🚀 Bilan")
+    _bullets(s, [
+        ("Industrialisation", "FAISS + embeddings persistés, Docker + CI, monitoring coûts, A/B testing."),
+        ("C5.1", "Cas d'usage justifié et gouverné."),
+        ("C5.2", "Solution RAG fonctionnelle, accessible, résiliente."),
+        (f"C5.3", f"Évaluation chiffrée avec optimisation prouvée ({NUM['gain_ndcg']} % nDCG)."),
+    ], top=1.85, gap=0.92)
+    _txt(s, 0.9, 6.6, 11.6, 0.5, "Merci — questions ?", 20, GREEN, font=FT_TITLE,
+         bold=True, align=PP_ALIGN.CENTER)
+
     prs.save(OUT / "presentation_projet3.pptx")
     print("OK presentation_projet3.pptx")
 
