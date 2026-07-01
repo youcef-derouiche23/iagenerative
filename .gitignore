@@ -51,10 +51,13 @@ data/*.pkl
 # Sorties générées par les scripts d'évaluation
 evaluation/RESULTS.md
 evaluation/params_results.md
+evaluation/weights_tuning.md
+evaluation/baseline_results.md
 evaluation/figures/
 
 # Captures d'écran générées pour la présentation
 screenshots/
+screenshots_demo/
 
 # Brouillons markdown des livrables (source de génération des .docx, hors dépôt)
 AUDIT.md
@@ -63,3 +66,6 @@ RECAP_FINAL.md
 rapport_projet3.md
 slides_projet3.md
 evaluation/evaluation_grid.md
+
+# Sorties de verification end-to-end
+screenshots_verify/

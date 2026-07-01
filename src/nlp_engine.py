@@ -2,12 +2,15 @@
 Moteur NLP avec SBERT pour l'analyse semantique des preferences
 """
 
+import hashlib
+import logging
+from pathlib import Path
+from typing import List, Dict, Tuple, Optional
+
 import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Tuple, Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +26,13 @@ class NLPEngine:
         self.model_name = model_name
         self.referentiel = None
         self.embeddings_cache = {}
-        # Cache des embeddings du référentiel : calculé une seule fois puis
-        # réutilisé à chaque requête (avant : ré-encodage complet à chaque
-        # analyse → latence/coût inutiles, non scalable). Cf. correctif audit.
+        # Cache mémoire des embeddings du référentiel : calculé une seule fois
+        # puis réutilisé. Persistance disque en plus (cf. encode_referentiel).
         self.referentiel_embeddings = None
-        
+        self._faiss_index = None
+        # Répertoire de persistance des embeddings (gitignoré)
+        self.cache_dir = Path(".cache/embeddings")
+
         logger.info("Modèle SBERT chargé avec succès")
     
     def load_referentiel(self, filepath: str = 'data/films_referentiel.csv') -> pd.DataFrame:
@@ -36,6 +41,7 @@ class NLPEngine:
         
         self.referentiel = pd.read_csv(filepath)
         self.referentiel_embeddings = None  # invalide le cache au rechargement
+        self._faiss_index = None
         self.referentiel['texte_complet'] = self.referentiel.apply(
             lambda row: self._build_film_text(row),
             axis=1
@@ -69,11 +75,23 @@ class NLPEngine:
         
         return embedding
     
-    def encode_referentiel(self, force: bool = False) -> np.ndarray:
-        """Encode tous les films du référentiel (mémorisé après le 1er appel).
+    def _corpus_signature(self) -> str:
+        """Empreinte (modèle + contenu du corpus) pour invalider le cache disque."""
+        joined = "||".join(self.referentiel['texte_complet'].tolist())
+        h = hashlib.sha256((self.model_name + joined).encode("utf-8")).hexdigest()[:16]
+        return h
+
+    def encode_referentiel(self, force: bool = False, persist: bool = True) -> np.ndarray:
+        """Encode tous les films du référentiel, avec cache mémoire ET disque.
+
+        Avant : ré-encodage complet à chaque requête (latence/coût inutiles).
+        Maintenant : calculé une fois, mémorisé en RAM, et persisté sur disque
+        (.npy) — au redémarrage on recharge sans réencoder. Scalable (cf.
+        industrialisation : remplaçable par un index vectoriel persistant).
 
         Args:
-            force: recalcule les embeddings même s'ils sont déjà en cache.
+            force: recalcule même si un cache existe.
+            persist: sauvegarde/charge depuis le disque.
         """
         if self.referentiel is None:
             raise ValueError("Le référentiel doit être chargé avant l'encodage")
@@ -82,18 +100,65 @@ class NLPEngine:
             logger.debug("Embeddings du référentiel servis depuis le cache mémoire")
             return self.referentiel_embeddings
 
-        logger.info(f"Encodage de {len(self.referentiel)} films...")
+        cache_file = self.cache_dir / f"ref_{self._corpus_signature()}.npy"
+        if persist and not force and cache_file.exists():
+            self.referentiel_embeddings = np.load(cache_file)
+            logger.info(f"Embeddings rechargés depuis le disque: {cache_file}")
+            return self.referentiel_embeddings
 
+        logger.info(f"Encodage de {len(self.referentiel)} films...")
         embeddings = self.model.encode(
             self.referentiel['texte_complet'].tolist(),
             convert_to_numpy=True,
             show_progress_bar=False,
-            batch_size=32
+            batch_size=32,
         )
-
         self.referentiel_embeddings = embeddings
+
+        if persist:
+            try:
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                np.save(cache_file, embeddings)
+                logger.info(f"Embeddings persistés sur disque: {cache_file}")
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"Persistance embeddings impossible: {e}")
+
         logger.info(f"Encodage terminé - Shape: {embeddings.shape}")
         return embeddings
+
+    def build_faiss_index(self):
+        """Construit un index FAISS (cosine via produit scalaire normalisé).
+
+        Optionnel : accélère et rend scalable la recherche de similarité pour de
+        grands corpus (industrialisation). Sans FAISS installé, on retombe sur le
+        calcul cosinus dense (sklearn) — voir faiss_search.
+        """
+        try:
+            import faiss
+        except Exception as e:
+            logger.warning(f"FAISS indisponible ({e}) — repli sur cosinus dense.")
+            return None
+        emb = self.encode_referentiel().astype("float32")
+        faiss.normalize_L2(emb)
+        index = faiss.IndexFlatIP(emb.shape[1])
+        index.add(emb)
+        self._faiss_index = index
+        logger.info(f"Index FAISS construit: {index.ntotal} vecteurs")
+        return index
+
+    def faiss_search(self, query_text: str, top_n: int = 3) -> List[Tuple[int, float]]:
+        """Recherche les top-N via FAISS si disponible, sinon cosinus dense."""
+        if self._faiss_index is None:
+            self.build_faiss_index()
+        if self._faiss_index is None:  # FAISS absent → repli
+            sims = self.calculate_similarity(self.encode_text(query_text),
+                                             self.encode_referentiel())
+            return self.get_top_matches(sims, top_n)
+        import faiss
+        q = self.encode_text(query_text).astype("float32").reshape(1, -1)
+        faiss.normalize_L2(q)
+        scores, idx = self._faiss_index.search(q, top_n)
+        return [(int(i), float(s)) for i, s in zip(idx[0], scores[0])]
     
     def calculate_similarity(
         self, 

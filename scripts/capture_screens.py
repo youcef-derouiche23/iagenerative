@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-URL = "http://127.0.0.1:8501"
+URL = os.environ.get("APP_URL", "http://127.0.0.1:8501")
 # Utiliser le Chromium pré-installé de l'environnement (évite "playwright install")
 CHROME = os.environ.get("CHROME_PATH", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 OUT = Path(__file__).resolve().parents[1] / "screenshots"
