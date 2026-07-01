@@ -216,59 +216,143 @@ def build_rapport():
 def build_plan():
     doc = Document()
     title_block(doc, "Plan de soutenance — Projet 3 (IA Générative)",
-                "Déroulé slide par slide · script oral · répartition binôme · timing (~10 min)")
-    para(doc, "Format : 3 projets en 30 min au total (~10 min/projet) puis 20 min de questions. "
-              "Projet 3 : ~10 min, 9 slides de contenu.", italic=True)
+                "Déroulé slide par slide · qui dit quoi (mot à mot) · transitions · timing")
+    para(doc, "Format global : 3 projets en 30 min au total (~10 min/projet) puis 20 min de "
+              "questions du jury. Objectif de ce projet : ~10 min, 9 slides.", italic=True)
+    para(doc, "Règle d'or : chacun défend ce qu'il présente. Anthony porte le fil « moteur & "
+              "données » (retrieval, scoring, correctif, évaluation) ; Youcef porte le fil "
+              "« IA générative & produit » (architecture, choix, LLM, robustesse, industrialisation). "
+              "Chacun doit toutefois pouvoir répondre sur tout (cf. antisèche).", italic=True)
 
     slides = [
-        ("1. Titre", "Slide titre (AISCA-Cinema, noms, RNCP).", "—", "Anthony", "0:30",
-         "« Bonjour, nous présentons AISCA-Cinema : un agent de recommandation de films basé "
-         "sur une architecture RAG. »"),
-        ("2. Besoin métier", "Problème, cible, valeur.", "—", "Anthony", "1:00",
-         "« Choisir un film est devenu difficile ; les filtres par mots-clés ne comprennent pas "
-         "une envie formulée en langage naturel. Notre cible : un spectateur qui décrit une envie, "
-         "pas un titre. Valeur : recommander ET justifier. C'est notre cas d'usage C5.1. »"),
-        ("3. Architecture RAG", "Schéma pipeline + capture questionnaire.", "01_questionnaire.png",
-         "Youcef", "1:30",
-         "« Le questionnaire alimente SBERT qui encode la demande et le catalogue ; on récupère "
-         "par similarité cosinus, on reclasse par un score pondéré, puis Gemini génère des "
-         "synthèses ancrées sur ces films. Retrieval + Generation. »"),
-        ("4. Choix techniques", "Tableau RAG vs alternatives + baseline TF-IDF.", "—", "Youcef", "1:15",
-         "« Pourquoi un RAG ? Corpus évolutif, génération traçable, coût maîtrisé. Et pourquoi "
-         "des embeddings plutôt que des mots-clés ? Notre baseline TF-IDF s'effondre face à SBERT "
-         f"({NUM['tfidf_gain']} % de nDCG) car les requêtes sont en français et les films décrits "
-         "en anglais : seul le modèle multilingue fait le pont. C'est notre justification C5.2. »"),
-        ("5. Démo — Top 3", "Capture recommandations réelles + composantes.", "02_top3.png",
-         "Anthony", "1:30",
-         "« Voici une vraie sortie : le Top 3 avec le détail du score — sémantique, genre, mood. "
-         "La recommandation est expliquée et tracée. »"),
-        ("6. Démo — Visualisations", "Radars + barres de score 50/40/10.", "03_visualisations.png",
-         "Youcef", "0:45",
-         "« Interface accessible à un non-technicien : profils par genre et ambiance, et "
-         "décomposition pondérée du score de chaque film. »"),
-        ("7. Évaluation (C5.3)", "Figure avant/après + chiffres + poids + juge.", "rag_comparison.png",
-         "Anthony", "2:00",
-         "« Le cœur de C5.3 : 15 requêtes annotées, mesurées en Precision, Recall, MRR, nDCG. Notre "
-         f"correctif fait passer le nDCG@5 de {NUM['ndcg_sem']} à {NUM['ndcg_cal']} ({NUM['gain_ndcg']} %), "
-         f"et le MRR de {NUM['mrr_sem']} à {NUM['mrr_cal']}. La barre orange prouve que le genre était "
-         "mort avant correction. Les poids 50/40/10 ne sont pas arbitraires : ils sont validés par "
-         "grid-search. Et on note la qualité de génération avec un LLM-as-judge, en comparant deux "
-         "températures. »"),
-        ("8. Limites & industrialisation", "Limites/biais/risques + pistes.", "—", "Youcef", "1:00",
-         "« Limites : corpus de 260 films classiques en anglais, hallucination résiduelle, quotas API. "
-         "Pour industrialiser : FAISS (déjà intégré), Docker + CI (faits), monitoring des coûts (instrumenté) "
-         "et A/B testing des paramètres. »"),
-        ("9. Conclusion", "Récap compétences.", "—", "Anthony", "0:30",
-         "« En résumé : un cas d'usage justifié et gouverné, une solution RAG fonctionnelle et "
-         "résiliente, et une évaluation chiffrée avec optimisation prouvée. Merci. »"),
+        ("Slide 1 — Titre", "Titre AISCA-Cinema, sous-titre, noms, RNCP.", "—", "Anthony", "0:30",
+         "« Bonjour, nous sommes Anthony Boucher et Youcef Derouiche. Nous présentons AISCA-Cinema, "
+         "notre projet d'IA générative pour le bloc 2 : un agent de recommandation de films fondé "
+         "sur une architecture RAG, c'est-à-dire génération augmentée par récupération. »",
+         "→ Anthony enchaîne sur le besoin métier."),
+        ("Slide 2 — Besoin métier (C5.1)", "Problème, cible, valeur, pourquoi la GenAI.", "—",
+         "Anthony", "1:00",
+         "« Le problème est simple : il y a trop de films, et choisir coûte du temps. Les moteurs "
+         "classiques filtrent par mots-clés ou par genre, mais ils ne comprennent pas une envie "
+         "formulée en langage naturel — par exemple « un film contemplatif sur la mémoire » — et "
+         "surtout ils n'expliquent pas leurs suggestions. Notre cible, c'est un spectateur qui sait "
+         "décrire une envie mais pas un titre. La valeur qu'on apporte : recommander ET justifier, "
+         "à partir d'un référentiel maîtrisé. Et pourquoi de l'IA générative ici ? Parce que la "
+         "valeur tient à deux choses qu'un simple filtre ne sait pas faire : comprendre le sens de "
+         "la demande, et restituer une explication personnalisée. C'est notre cas d'usage, la "
+         "compétence C5.1. »",
+         "→ Anthony passe la main à Youcef : « Youcef va détailler l'architecture. »"),
+        ("Slide 3 — Architecture RAG", "Schéma pipeline (4 cartes) + capture questionnaire.",
+         "01_questionnaire.png", "Youcef", "1:30",
+         "« Voici le pipeline. L'utilisateur remplit un questionnaire — une description libre plus "
+         "des curseurs de préférences. Ce texte part dans SBERT, un modèle qui transforme la phrase "
+         "en vecteur numérique ; on encode de la même façon nos 260 films, et on mesure la proximité "
+         "par similarité cosinus : c'est l'étape de récupération, le Retrieval. Ensuite on reclasse "
+         "les films par un score pondéré — 50 % sémantique, 40 % genre, 10 % ambiance. Enfin, Gemini, "
+         "le LLM de Google, rédige un profil et un plan de découverte, mais uniquement à partir des "
+         "films récupérés : c'est l'étape de génération, la Generation. Retrieval plus Generation, "
+         "c'est exactement ce qu'on appelle un RAG. »",
+         "→ Youcef enchaîne sur la justification des choix."),
+        ("Slide 4 — Choix techniques (C5.2)", "Tableau RAG vs alternatives + baseline TF-IDF.",
+         "—", "Youcef", "1:15",
+         "« Pourquoi un RAG et pas autre chose ? Le fine-tuning aurait demandé beaucoup de données "
+         "et serait devenu opaque ; le prompting seul aurait halluciné faute d'ancrage. Le RAG, lui, "
+         "laisse le corpus évoluer sans réentraînement, reste traçable — on sait quels films ont servi "
+         "— et coûte peu. Deuxième choix : pourquoi des embeddings plutôt qu'une recherche par "
+         "mots-clés ? On l'a mesuré : une baseline TF-IDF s'effondre face à SBERT, plus de 900 % "
+         "d'écart de nDCG. La raison est parlante : nos requêtes sont en français et les films décrits "
+         "en anglais — seul un modèle multilingue fait le pont sémantique. C'est notre justification "
+         "C5.2. »",
+         "→ Youcef repasse la main à Anthony pour la démo."),
+        ("Slide 5 — Démo Top 3", "Capture des recommandations réelles + composantes du score.",
+         "02_top3.png", "Anthony", "1:30",
+         "« Voici une vraie sortie de l'application, pour une requête de science-fiction "
+         "philosophique. On obtient le Top 3, et surtout, pour chaque film, la décomposition du "
+         "score : la part sémantique, la part genre, la part ambiance. La recommandation n'est pas "
+         "une boîte noire : elle est expliquée et tracée jusqu'aux films sources. »",
+         "→ Anthony bascule sur l'onglet visualisations."),
+        ("Slide 6 — Démo Visualisations", "Radars de préférences + barres de score 50/40/10.",
+         "03_visualisations.png", "Youcef", "0:45",
+         "« L'interface est pensée pour un non-technicien : deux radars résument le profil par genre "
+         "et par ambiance, et un graphique montre la décomposition pondérée du score de chaque film "
+         "recommandé. C'est le volet accessibilité de la compétence C5.2. »",
+         "→ Youcef passe à Anthony pour l'évaluation, le cœur de C5.3."),
+        ("Slide 7 — Évaluation (C5.3)", "Figure avant/après + cartes-chiffres + poids + juge.",
+         "rag_comparison.png", "Anthony", "2:00",
+         "« C'est le cœur de la compétence C5.3, l'évaluation. On a construit un jeu de 15 requêtes "
+         "annotées, avec une vérité terrain : pour chaque requête, la liste des films réellement "
+         "pertinents. On mesure quatre métriques standard de recherche d'information : Precision, "
+         "Recall, MRR et nDCG. Résultat : notre correctif fait passer le nDCG de 0,33 à 0,51, plus "
+         "de 50 % de gain, et le MRR de 0,59 à 0,78. La barre orange, au milieu, c'est la version "
+         "où le genre était buggé : elle reste collée au sémantique seul, ce qui prouve chiffres à "
+         "l'appui que le composant genre était mort avant notre correction. Point important pour le "
+         "jury : les poids 50/40/10 ne sont pas choisis au doigt mouillé — ils sont validés par un "
+         "grid-search, une recherche exhaustive sur le jeu annoté. Et pour la qualité des textes "
+         "générés par le LLM, on utilise un LLM-as-judge : un second appel du modèle note chaque "
+         "réponse sur des critères comme la pertinence et l'absence d'hallucination, ce qui nous "
+         "permet de comparer objectivement deux réglages de température. »",
+         "→ Anthony passe la main à Youcef pour la robustesse et les limites."),
+        ("Slide 8 — Robustesse · Sécurité · Limites", "Résilience, gouvernance, observabilité, limites.",
+         "—", "Youcef", "1:00",
+         "« Côté production, on a soigné trois choses. La résilience : des relances automatiques "
+         "avec backoff exponentiel quand l'API renvoie un dépassement de quota, plus un mode dégradé "
+         "qui garde le cœur fonctionnel même sans clé. La gouvernance : des safety_settings et un "
+         "garde-fou contre l'injection de prompt sur le texte libre de l'utilisateur. Et "
+         "l'observabilité : on suit les tokens, le coût estimé et la latence à chaque appel. Nos "
+         "limites, qu'on assume : un corpus de 260 films classiques en anglais, une hallucination "
+         "résiduelle possible hors du top 3, et les quotas du free tier. »",
+         "→ Youcef conclut sur l'industrialisation."),
+        ("Slide 9 — Industrialisation & conclusion", "Pistes d'industrialisation + récap compétences.",
+         "—", "Youcef puis Anthony", "0:30",
+         "Youcef : « Pour industrialiser : un index vectoriel FAISS et des embeddings persistés — "
+         "déjà intégrés —, Docker et une CI qui lance les tests à chaque commit, du monitoring des "
+         "coûts, et de l'A/B testing des paramètres. » "
+         "Anthony (clôture) : « En résumé : un cas d'usage justifié et gouverné pour C5.1, une "
+         "solution RAG fonctionnelle et résiliente pour C5.2, et une évaluation chiffrée avec "
+         "optimisation prouvée pour C5.3. Merci, nous sommes à votre disposition pour vos questions. »",
+         "→ Fin de la présentation, place aux questions."),
     ]
-    for titre, contenu, img, qui, timing, script in slides:
+    for titre, contenu, img, qui, timing, script, transition in slides:
         h1(doc, titre)
         table(doc, ["Élément", "Détail"], [["À l'écran", contenu], ["Image", img],
-                                            ["Qui parle", qui], ["Durée", timing]])
-        para(doc, "Script oral :", bold=True)
+                                            ["Intervenant", qui], ["Durée", timing]])
+        para(doc, "Script (mot à mot) :", bold=True)
         para(doc, script, italic=True)
+        para(doc, "Transition : ", bold=True)
+        para(doc, transition)
         doc.add_paragraph()
+
+    h1(doc, "Récapitulatif timing")
+    table(doc, ["Bloc", "Intervenant", "Durée cumulée"], [
+        ["Slides 1-2 (intro + besoin)", "Anthony", "~1:30"],
+        ["Slides 3-4 (archi + choix)", "Youcef", "~2:45"],
+        ["Slide 5 (démo Top 3)", "Anthony", "~1:30"],
+        ["Slide 6 (visualisations)", "Youcef", "~0:45"],
+        ["Slide 7 (évaluation)", "Anthony", "~2:00"],
+        ["Slides 8-9 (robustesse + conclusion)", "Youcef (+ Anthony clôture)", "~1:30"],
+        ["TOTAL", "—", "~10:00"],
+    ])
+
+    h1(doc, "Répartition des questions du jury (qui répond en premier)")
+    para(doc, "Le premier nommé répond ; l'autre complète. Les deux doivent connaître l'antisèche.")
+    table(doc, ["Type de question", "Répond en premier"], [
+        ["Besoin métier, cas d'usage, valeur, RGPD/gouvernance", "Anthony"],
+        ["Retrieval, SBERT, embeddings, similarité, scoring, correctif genre", "Anthony"],
+        ["Évaluation, métriques, validation croisée des poids, vérité terrain", "Anthony"],
+        ["Architecture RAG, choix RAG vs fine-tuning/prompting", "Youcef"],
+        ["LLM, Gemini, température/top-p, hallucination, LLM-as-judge", "Youcef"],
+        ["Résilience, quotas, sécurité (injection, safety), coûts", "Youcef"],
+        ["Industrialisation, FAISS, Docker, CI, monitoring", "Youcef"],
+    ])
+
+    h1(doc, "Conseils de présentation")
+    for c in ["Relier explicitement chaque partie à une compétence (« ceci démontre Cx.y car… »).",
+              "Toujours donner un chiffre quand on parle de résultat (nDCG, MRR, gain %).",
+              "Assumer les limites : le jury valorise le recul critique.",
+              "En cas de trou, se raccrocher à l'antisèche (section correspondante).",
+              "Répéter au moins une fois à blanc avec un chrono pour tenir les 10 minutes."]:
+        bullet(doc, c)
+
     doc.save(OUT / "plan_soutenance_projet3.docx")
     print("OK plan_soutenance_projet3.docx")
 
@@ -276,117 +360,341 @@ def build_plan():
 # ======================================================= 3. ANTISÈCHE
 def build_antiseche():
     doc = Document()
-    title_block(doc, "Antisèche — Projet 3 (IA Générative)",
-                "Tout comprendre pour tout expliquer au jury")
+    title_block(doc, "Antisèche technique — Projet 3 (IA Générative)",
+                "Chaque terme expliqué au niveau ingénierie : définition · mécanisme · rôle · forces/limites")
+    para(doc, "Objectif : pouvoir expliquer et défendre chaque brique du projet. Pour chaque concept : "
+              "ce que c'est, comment ça marche techniquement, à quoi il sert chez nous, et ses "
+              "forces/limites.", italic=True)
 
-    h1(doc, "A. Concepts & outils")
-    concepts = [
-        ("RAG (Retrieval-Augmented Generation)",
-         "Combine une RECHERCHE d'information (retrieval) et une GÉNÉRATION par LLM : on récupère "
-         "des documents pertinents (films) puis on les fournit au LLM comme contexte.",
-         "Force : génération ancrée et traçable, corpus modifiable sans réentraînement. "
-         "Faiblesse : la qualité dépend du retrieval.",
-         "SBERT récupère le Top films, Gemini rédige le profil/plan à partir de ces films."),
-        ("Embeddings + SBERT (MiniLM-L12-v2 multilingue)",
-         "Représentation d'un texte en vecteur, telle que deux textes de sens proche ont des "
-         "vecteurs proches. SBERT produit un embedding par phrase ; la version multilingue gère FR+EN.",
-         "Force : capte le sens, multilingue, rapide en CPU. Faiblesse : modèle généraliste.",
-         "On encode requête et films ; preuve de l'apport : +961 % de nDCG vs TF-IDF (FR↔EN)."),
-        ("Similarité cosinus",
-         "Mesure l'angle entre deux vecteurs : 1 = très similaire, 0 = sans rapport.",
-         "Force : standard, simple. Faiblesse : ne capte que ce que l'embedding encode.",
-         "Classe les films par proximité avec la requête."),
-        ("Score pondéré + calibrage",
-         "0.50 sémantique + 0.40 genre + 0.10 mood. Les poids sont choisis par validation "
-         "croisée (grid-search maximisant le nDCG), pas à la main.",
-         "Force : transparent, explicable, calibré sur données. Faiblesse : dépend du jeu annoté.",
-         "scoring.py + evaluation/tune_weights.py."),
-        ("LLM & Gemini (gemini-2.5-flash)",
-         "Large Language Model génératif. Gemini 2.5 Flash est rapide ; c'est un modèle « à "
-         "raisonnement » : il consomme des tokens en réflexion interne (d'où max_output_tokens élevé).",
-         "Force : qualité FR. Faiblesse : peut halluciner, dépend d'une API (quota/coût).",
-         "Génère profil et plan (genai_integration.py)."),
-        ("Paramètres de génération (température, top-p, top-k)",
-         "Température : aléa (0 = factuel, 1 = créatif). top-p/top-k : restreignent l'échantillonnage. "
-         "max_output_tokens : longueur max.",
-         "Force : arbitrer fiabilité vs richesse. Faiblesse : température élevée = plus d'hallucinations.",
-         "Exposés via GenerationConfig ; comparés (0.2 vs 0.9) dans compare_params.py."),
-        ("LLM-as-judge",
-         "Un second appel LLM (température 0, sortie JSON) note la réponse générée sur des critères "
-         "(pertinence, exactitude, hallucination, ton).",
-         "Force : évaluation qualité automatisée et reproductible. Faiblesse : le juge a ses propres biais.",
-         "judge_response() ; alimente la comparaison de paramètres."),
-        ("Métriques de retrieval (Precision@k, Recall@k, MRR, nDCG)",
-         "Precision@k : part de pertinents dans les k premiers. Recall@k : part des pertinents "
-         "retrouvés. MRR : 1/rang du premier bon résultat. nDCG : qualité du classement.",
-         "Force : standards, objectifs. Faiblesse : dépendent d'une vérité terrain.",
-         "evaluation/metrics.py, sur 15 requêtes annotées."),
-        ("Résilience & gouvernance API",
-         "Retry avec backoff exponentiel sur quota 429 ; safety_settings (catégories à risque) ; "
-         "garde-fou anti-prompt-injection sur le texte libre ; suivi tokens/coût/latence.",
-         "Force : robustesse production, sécurité, observabilité. Faiblesse : free tier limité (quotas/jour).",
-         "genai_integration.py."),
-        ("FAISS / persistance des embeddings",
-         "Les embeddings du corpus sont calculés une fois et persistés (disque) ; FAISS indexe les "
-         "vecteurs pour une recherche scalable.",
-         "Force : latence et scalabilité. Faiblesse : index à reconstruire si le corpus change.",
-         "nlp_engine.py (encode_referentiel persiste ; build_faiss_index optionnel)."),
-        ("Streamlit + Docker + CI",
-         "Streamlit : UI web Python. Docker : image reproductible. CI (GitHub Actions) : tests "
-         "automatiques à chaque push.",
-         "Force : prototypage rapide, reproductibilité, non-régression. Faiblesse : Streamlit peu adapté à très forte charge.",
-         "app.py, Dockerfile, .github/workflows/ci.yml."),
-    ]
-    for nom, quoi, ff, projet in concepts:
+    def concept(nom, definition, mecanisme, role, ff):
         h2(doc, nom)
-        para(doc, "Ce que c'est : ", bold=True); para(doc, quoi)
-        para(doc, "Forces / faiblesses : ", bold=True); para(doc, ff)
-        para(doc, "Dans notre projet : ", bold=True); para(doc, projet)
+        para(doc, "Définition : ", bold=True); para(doc, definition)
+        para(doc, "Comment ça marche : ", bold=True); para(doc, mecanisme)
+        para(doc, "Rôle dans le projet : ", bold=True); para(doc, role)
+        para(doc, "Forces / limites : ", bold=True); para(doc, ff)
 
-    h1(doc, "B. Questions probables du jury — réponses préparées")
+    # ------------------------------------------------ A. NLP / RETRIEVAL
+    h1(doc, "A. Traitement du langage & récupération (retrieval)")
+
+    concept("NLP (Traitement Automatique du Langage)",
+            "Ensemble de techniques pour faire manipuler du langage humain par une machine.",
+            "On transforme du texte en représentations numériques exploitables (vecteurs), sur "
+            "lesquelles on calcule des similarités, des classifications, etc.",
+            "Toute la partie « comprendre la requête » et « comparer aux films » relève du NLP.",
+            "Force : capture le sens au-delà des mots exacts. Limite : dépend de la qualité du "
+            "modèle et des données.")
+
+    concept("Transformer & mécanisme d'attention",
+            "Architecture de réseau de neurones (2017) à la base des LLM et de BERT.",
+            "Le mécanisme d'« attention » pondère l'importance de chaque mot par rapport aux autres "
+            "dans la phrase, ce qui permet de capturer le contexte (un mot n'a pas le même sens "
+            "selon son entourage). Les mots sont d'abord découpés en tokens puis projetés en vecteurs.",
+            "SBERT et Gemini reposent tous deux sur des Transformers.",
+            "Force : contexte long, parallélisable. Limite : coûteux en calcul, gourmand en données.")
+
+    concept("Tokenisation",
+            "Découpage d'un texte en unités élémentaires (tokens : mots, sous-mots, ponctuation).",
+            "Un tokenizer applique un vocabulaire appris (ex. sous-mots BPE/WordPiece) : « cinéphile » "
+            "peut devenir « ciné » + « phile ». Le modèle ne voit que des identifiants de tokens. "
+            "La facturation des LLM et les limites de contexte se comptent en tokens.",
+            "Détermine la longueur/coût des appels Gemini ; nos réponses sont bornées en tokens.",
+            "Force : gère les mots inconnus via les sous-mots. Limite : un même texte peut coûter "
+            "plus de tokens selon la langue.")
+
+    concept("Embeddings (plongements vectoriels)",
+            "Représentation d'un texte par un vecteur de nombres réels (ici ~384 dimensions).",
+            "Le modèle place les textes dans un espace vectoriel tel que deux textes de sens proche "
+            "ont des vecteurs proches. Chaque dimension n'est pas interprétable seule ; c'est la "
+            "géométrie globale (distances/angles) qui porte le sens.",
+            "On encode la requête utilisateur et chaque film ; la comparaison se fait sur ces vecteurs.",
+            "Force : compare le SENS, multilingue. Limite : « boîte noire », sensible au modèle choisi.")
+
+    concept("BERT vs Sentence-BERT (SBERT) — modèle MiniLM-L12-v2 multilingue",
+            "BERT produit des vecteurs par token ; Sentence-BERT est optimisé pour produire un seul "
+            "vecteur par PHRASE, directement comparable.",
+            "SBERT ajoute une couche de « pooling » sur BERT et est entraîné par paires de phrases "
+            "(objectif contrastif) pour que la distance vectorielle reflète la similarité sémantique. "
+            "La version multilingue partage un espace commun entre langues (FR et EN).",
+            "C'est notre moteur de récupération (src/nlp_engine.py) ; il gère nos requêtes FR sur "
+            "des descriptions EN.",
+            "Force : rapide, léger (tourne en CPU), multilingue. Limite : modèle généraliste, non "
+            "spécialisé cinéma.")
+
+    concept("Normalisation L2 & similarité cosinus",
+            "Mesure de proximité entre deux vecteurs, insensible à leur longueur.",
+            "Le cosinus de l'angle entre deux vecteurs vaut 1 s'ils pointent dans la même direction "
+            "(très similaires), 0 s'ils sont orthogonaux (sans rapport). La normalisation L2 ramène "
+            "les vecteurs à une norme 1, ce qui rend le produit scalaire égal au cosinus (utilisé "
+            "par FAISS IndexFlatIP).",
+            "Sert à classer les films par proximité avec la requête (calculate_similarity).",
+            "Force : standard, robuste à la longueur du texte. Limite : ne capte que ce que "
+            "l'embedding encode.")
+
+    concept("TF-IDF (baseline lexicale)",
+            "Représentation classique d'un texte par la fréquence pondérée de ses mots.",
+            "TF = fréquence du terme dans le document ; IDF = rareté du terme dans le corpus. Un mot "
+            "fréquent dans un doc mais rare globalement pèse fort. On compare ensuite par cosinus. "
+            "C'est purement lexical : aucun sens, seulement des correspondances de mots.",
+            "Notre baseline de comparaison : elle prouve l'apport de SBERT (+961 % de nDCG) car "
+            "elle échoue sur le pont FR→EN.",
+            "Force : simple, rapide, interprétable. Limite : aucun sens, ne franchit pas la barrière "
+            "de langue ni les synonymes.")
+
+    concept("Retrieval vs Ranking",
+            "Deux étapes : récupérer un ensemble de candidats, puis les ordonner finement.",
+            "Le retrieval (SBERT + cosinus) sélectionne les films proches de la requête ; le ranking "
+            "réordonne ce sous-ensemble avec un score plus riche (sémantique + préférences). On "
+            "sépare les deux pour la performance et la clarté.",
+            "Retrieval = nlp_engine ; Ranking = scoring.py.",
+            "Force : modulaire, chaque étape optimisable. Limite : une erreur de retrieval ne peut "
+            "pas être rattrapée par le ranking.")
+
+    concept("Score pondéré & normalisation Likert",
+            "Combinaison linéaire de trois signaux : 0.50 sémantique + 0.40 genre + 0.10 ambiance.",
+            "Les curseurs Likert (1 à 5) sont normalisés en [0,1] (division par 5). Les composantes "
+            "genre/mood comparent la catégorie française du film aux préférences (matching insensible "
+            "aux accents). Le score final est borné dans [0,1].",
+            "Cœur du reclassement (scoring.py) ; c'est là qu'était le bug (colonne EN au lieu de FR).",
+            "Force : transparent, explicable, ajustable. Limite : pondération linéaire, ne capture "
+            "pas d'interactions complexes.")
+
+    concept("FAISS & index vectoriel",
+            "Bibliothèque de recherche de plus proches voisins dans un grand ensemble de vecteurs.",
+            "Au lieu de comparer la requête à tous les films un par un (coûteux à grande échelle), "
+            "FAISS construit un index (ici IndexFlatIP, produit scalaire sur vecteurs normalisés = "
+            "cosinus) qui accélère la recherche. Les embeddings sont aussi persistés sur disque "
+            "(.npy) pour éviter de les recalculer au démarrage.",
+            "Intégré en option (nlp_engine.build_faiss_index) pour la scalabilité / industrialisation.",
+            "Force : latence et passage à l'échelle. Limite : index à reconstruire si le corpus change.")
+
+    # ------------------------------------------------ B. LLM / GÉNÉRATION
+    h1(doc, "B. IA générative (LLM)")
+
+    concept("LLM & génération autoregressive",
+            "Large Language Model : modèle génératif entraîné à prédire le mot (token) suivant.",
+            "Le modèle génère du texte token par token : à chaque étape il calcule une distribution "
+            "de probabilité sur le vocabulaire et en tire le token suivant, qu'il réinjecte. Répété, "
+            "cela produit une réponse cohérente.",
+            "Gemini rédige le profil cinéphile et le plan de découverte.",
+            "Force : qualité rédactionnelle, polyvalence. Limite : peut halluciner ; dépend d'une API.")
+
+    concept("RAG (Retrieval-Augmented Generation)",
+            "Architecture qui couple une RÉCUPÉRATION d'information et une GÉNÉRATION par LLM.",
+            "On récupère d'abord des documents pertinents (nos films), qu'on injecte dans le prompt "
+            "comme contexte ; le LLM répond en s'appuyant sur ce contexte plutôt que sur sa seule "
+            "mémoire. Cela réduit les hallucinations et rend la réponse traçable.",
+            "Toute notre solution : SBERT récupère, Gemini génère à partir des films récupérés.",
+            "Force : ancrage factuel, corpus modifiable sans réentraînement, traçable. Limite : "
+            "qualité plafonnée par le retrieval.")
+
+    concept("Gemini 2.5 Flash & tokens de raisonnement",
+            "LLM de Google ; la variante Flash est rapide et économique.",
+            "C'est un modèle « à raisonnement » : il peut consommer une partie de son budget de "
+            "sortie en réflexion interne avant de répondre. D'où un max_output_tokens élevé (3072) "
+            "pour que la réponse visible ne soit pas tronquée.",
+            "Modèle de génération du projet ; choisi car le free tier de gemini-2.0 renvoyait un "
+            "quota nul.",
+            "Force : bon rapport qualité/coût, multilingue. Limite : quotas free tier stricts "
+            "(par jour ET par minute).")
+
+    concept("Paramètres d'échantillonnage : température, top-p, top-k, max_output_tokens",
+            "Réglages qui contrôlent l'aléa et la longueur de la génération.",
+            "Température : aplatit (haute) ou accentue (basse) la distribution de probabilité — 0 = "
+            "quasi déterministe/factuel, ~1 = créatif/varié. Top-k : ne considère que les k tokens "
+            "les plus probables. Top-p (nucleus) : ne considère que les tokens dont la probabilité "
+            "cumulée atteint p. max_output_tokens : longueur maximale.",
+            "Exposés via GenerationConfig ; on compare Factuelle (0.2) vs Créative (0.9) dans "
+            "compare_params.py.",
+            "Force : arbitrer fiabilité vs richesse. Limite : température élevée = plus "
+            "d'hallucinations.")
+
+    concept("Prompt engineering & garde-fous anti-hallucination",
+            "Conception des instructions envoyées au LLM pour obtenir un comportement fiable.",
+            "On structure le prompt (rôle, données, tâche, contraintes de format et de longueur) et "
+            "on ajoute des consignes explicites : « n'invente aucun fait sur les films listés », "
+            "« appuie-toi uniquement sur le contexte fourni ». Le texte utilisateur est encadré par "
+            "des balises pour ne pas être interprété comme une instruction.",
+            "Utilisé dans generate_cinephile_profile / generate_discovery_plan.",
+            "Force : réduit fortement les dérives. Limite : ne garantit pas 0 hallucination.")
+
+    concept("Hallucination",
+            "Production par le LLM d'un contenu plausible mais faux (film inexistant, fait inventé).",
+            "Provient de la nature probabiliste du modèle : il complète ce qui « sonne juste ». On "
+            "l'atténue par l'ancrage RAG, les consignes de prompt, une température basse, et on la "
+            "mesure (titres cités hors corpus + critère « non-hallucination » du juge).",
+            "Risque central d'un projet GenAI ; identifié comme limite assumée.",
+            "Force (de notre approche) : plusieurs garde-fous cumulés. Limite : résiduelle hors top 3.")
+
+    concept("LLM-as-judge",
+            "Utiliser un LLM comme évaluateur automatique des réponses d'un autre (ou du même) LLM.",
+            "Un appel dédié, en température 0 et sortie JSON stricte, note la réponse de 1 à 5 sur "
+            "des critères (pertinence, exactitude, complétude, non-hallucination, ton). On extrait le "
+            "JSON et on agrège. On utilise un modèle léger pour éviter la troncature par raisonnement.",
+            "judge_response() ; alimente la comparaison de paramètres (qualité avant/après température).",
+            "Force : évaluation qualité automatisée et reproductible. Limite : le juge a ses propres "
+            "biais ; à recouper avec des notes humaines.")
+
+    # ------------------------------------------------ C. ÉVALUATION
+    h1(doc, "C. Évaluation (C5.3)")
+
+    concept("Vérité terrain & jeu de cas annoté",
+            "Ensemble de requêtes pour lesquelles on a défini à la main les films pertinents.",
+            "On a rédigé 15 requêtes réalistes et, pour chacune, la liste des films du corpus jugés "
+            "pertinents (evaluation/test_queries.json). C'est la référence contre laquelle on mesure "
+            "le système.",
+            "Base de toutes nos métriques et du calibrage des poids.",
+            "Force : permet une évaluation objective. Limite : annotation par les auteurs "
+            "(subjectivité), 15 requêtes = échantillon modeste.")
+
+    concept("Precision@k, Recall@k, MRR, nDCG",
+            "Métriques standard de recherche d'information.",
+            "Precision@k : proportion de pertinents parmi les k premiers. Recall@k : proportion des "
+            "pertinents retrouvés dans les k premiers. MRR : moyenne de 1/rang du premier résultat "
+            "pertinent (qualité du tout premier bon résultat). nDCG : qualité du classement, avec une "
+            "décote logarithmique — un pertinent bien placé compte plus ; normalisé par le classement "
+            "idéal (valeur entre 0 et 1).",
+            "Calculées dans evaluation/metrics.py sur les 15 requêtes ; nDCG@5 est notre métrique "
+            "principale.",
+            "Force : objectives, comparables. Limite : dépendent de la vérité terrain.")
+
+    concept("Validation croisée / grid-search & sur-apprentissage",
+            "Recherche systématique des meilleurs hyper-paramètres, évaluée sur des données.",
+            "On teste toutes les combinaisons de poids (α,β,γ) sommant à 1 et on garde celle qui "
+            "maximise le nDCG@5. On retient un compromis (50/40/10) plutôt que l'optimum brut "
+            "(50/50/0) pour éviter le sur-apprentissage : l'optimum brut annulait l'ambiance et "
+            "collait trop à une vérité terrain bâtie par catégorie.",
+            "evaluation/tune_weights.py ; justifie objectivement les poids.",
+            "Force : choix fondé sur des données, pas arbitraire. Limite : optimisé sur un petit jeu ; "
+            "risque de sur-apprentissage si on suit l'optimum aveuglément.")
+
+    concept("Baseline & comparaison avant/après",
+            "Point de référence pour prouver qu'une amélioration apporte réellement de la valeur.",
+            "On compare systématiquement : sémantique seul vs pondéré corrigé (preuve du correctif), "
+            "et SBERT vs TF-IDF (preuve de l'apport sémantique). Sans baseline, un chiffre isolé ne "
+            "prouve rien.",
+            "RESULTS.md (avant/après correctif) et baseline_results.md (SBERT vs TF-IDF).",
+            "Force : rend les gains démontrables. Limite : la baseline doit être honnête et pertinente.")
+
+    # ------------------------------------------------ D. INGÉNIERIE / PROD
+    h1(doc, "D. Ingénierie & mise en production")
+
+    concept("Résilience : retry & backoff exponentiel",
+            "Capacité à survivre aux erreurs transitoires d'une API externe.",
+            "En cas d'erreur 429 (quota dépassé) ou d'indisponibilité, on relance l'appel après un "
+            "délai qui double à chaque tentative (5s, 10s, 20s, 40s…) : c'est le backoff exponentiel, "
+            "qui évite de marteler le service et laisse le quota par minute se réinitialiser.",
+            "Implémenté dans genai_integration (_generate_with_retry).",
+            "Force : robustesse en production. Limite : ne résout pas un quota épuisé pour la journée.")
+
+    concept("Quotas & rate limiting (RPM / RPD)",
+            "Limites imposées par l'API : requêtes par minute (RPM) et par jour (RPD).",
+            "Le free tier Gemini plafonne le nombre d'appels ; dépasser renvoie une erreur 429. Le "
+            "retry gère les limites par minute ; les limites par jour imposent d'attendre la "
+            "réinitialisation ou de passer en payant.",
+            "Contrainte réelle rencontrée pendant l'évaluation LLM ; gérée par cache + retry + mode "
+            "dégradé.",
+            "Force : maîtrise des coûts. Limite : bride le volume d'évaluation en free tier.")
+
+    concept("Cache & hachage SHA-256",
+            "Mémorisation des réponses pour éviter de rappeler l'API sur une entrée identique.",
+            "La clé de cache est un hachage SHA-256 du prompt + modèle + paramètres de génération : "
+            "deux réglages différents ne partagent pas la même réponse. Le cache est persistant "
+            "(fichier JSON) avec éviction FIFO quand il est plein.",
+            "cache_manager.py ; réduit coûts et latence, rend les démos reproductibles.",
+            "Force : économies, reproductibilité. Limite : peut servir une réponse périmée si le "
+            "prompt ne change pas.")
+
+    concept("Observabilité : suivi tokens, coût, latence",
+            "Instrumentation permettant de mesurer ce que consomme le système.",
+            "À chaque appel, on lit usage_metadata (tokens entrée/sortie), on estime le coût via une "
+            "grille tarifaire, et on chronomètre la latence. On agrège par session.",
+            "get_api_stats() ; répond à la question jury « comment industrialiser / maîtriser les "
+            "coûts ? ».",
+            "Force : pilotage des coûts et de la performance. Limite : coût estimé (grille indicative).")
+
+    concept("Sécurité : injection de prompt & safety settings",
+            "Se protéger d'entrées malveillantes et cadrer les contenus générés.",
+            "Injection de prompt = un utilisateur glisse « ignore les instructions précédentes… » "
+            "dans le texte libre pour détourner le LLM ; on neutralise les lignes suspectes et on "
+            "encadre le texte par des balises. Les safety_settings de Gemini bloquent les catégories "
+            "à risque (haine, violence…).",
+            "sanitize_user_text() + safety_settings dans genai_integration.",
+            "Force : gouvernance et sécurité. Limite : filtrage heuristique, non exhaustif.")
+
+    concept("Secrets, .env et .gitignore",
+            "Gestion des informations sensibles (clé API) hors du code versionné.",
+            "La clé vit dans un fichier .env local, ignoré par git ; le dépôt ne contient qu'un "
+            ".env.example avec un placeholder. Une clé avait été commitée par erreur : retirée et "
+            "rotée.",
+            "Gouvernance (C5.1) ; condition sine qua non d'un projet propre.",
+            "Force : pas de fuite de secret. Limite : une clé exposée reste dans l'historique git "
+            "(d'où la rotation).")
+
+    concept("Conteneurisation (Docker) & CI (GitHub Actions)",
+            "Reproductibilité de l'exécution et automatisation des vérifications.",
+            "Docker empaquette l'app et ses dépendances dans une image identique partout. La CI "
+            "(intégration continue) exécute automatiquement les tests à chaque push : c'est un "
+            "garde-fou de non-régression.",
+            "Dockerfile + .github/workflows/ci.yml (29 tests).",
+            "Force : déploiement fiable, qualité continue. Limite : image volumineuse (torch) ; CI "
+            "limitée aux tests rapides.")
+
+    concept("Tests unitaires & mode dégradé",
+            "Vérifier automatiquement des comportements précis ; fonctionner même en panne partielle.",
+            "Les tests (pytest) verrouillent le scoring, les métriques, le cache et l'anti-injection. "
+            "Le mode dégradé garde le cœur RAG (retrieval + scoring + visualisations) fonctionnel "
+            "même sans clé API — seules les synthèses rédigées sont remplacées par un résumé "
+            "déterministe.",
+            "tests/ + app.py (try/except autour de l'init GenAI).",
+            "Force : fiabilité, démo possible sans clé. Limite : couverture de tests à étendre.")
+
+    concept("Streamlit & RGPD",
+            "Framework d'UI web en Python ; cadre légal des données personnelles.",
+            "Streamlit réexécute le script à chaque interaction (modèle « rerun ») pour construire "
+            "l'interface. Les réponses libres de l'utilisateur sont stockées localement et exclues "
+            "du dépôt ; en production il faudrait consentement, durée de conservation et anonymisation.",
+            "app.py (UI) ; les données utilisateur relèvent du RGPD.",
+            "Force : prototypage rapide, accessible. Limite : peu adapté aux très fortes charges.")
+
+    # ------------------------------------------------ E. Q/R + F. mémo
+    h1(doc, "E. Questions probables du jury — réponses courtes")
     qa = [
         ("Pourquoi un RAG plutôt qu'un fine-tuning ?",
-         "Corpus évolutif sans réentraînement, génération traçable, coût maîtrisé. Le fine-tuning "
+         "Corpus évolutif sans réentraînement, génération traçable, coût maîtrisé ; le fine-tuning "
          "demanderait beaucoup de données et serait opaque."),
         ("Comment évaluez-vous la qualité ? (LA question C5.3)",
-         "Deux niveaux. Retrieval : 15 requêtes annotées + Precision/Recall/MRR/nDCG. Génération : "
-         "un LLM-as-judge note pertinence/exactitude/hallucination/ton, et on compare deux "
-         f"températures. Preuve : +{NUM['gain_ndcg'].lstrip('+')} % de nDCG après correctif."),
+         "Retrieval : 15 requêtes annotées + Precision/Recall/MRR/nDCG. Génération : LLM-as-judge "
+         f"sur 5 critères + comparaison de température. Preuve : {NUM['gain_ndcg']} % de nDCG après correctif."),
         ("Pourquoi les poids 50/40/10 ?",
-         "Ils ne sont pas choisis à la main : un grid-search sur le jeu annoté montre que 50/40/10 "
-         f"({NUM['w_chosen']}) bat le réglage naïf 50/30/20 ({NUM['w_naive']}). On garde le sémantique "
-         "dominant et un mood de départage."),
+         f"Validés par grid-search : 50/40/10 (nDCG {NUM['w_chosen']}) bat le naïf 50/30/20 "
+         f"({NUM['w_naive']}) ; on garde le sémantique dominant et le mood en départage."),
         ("Comment gérez-vous les hallucinations ?",
-         "Ancrage RAG (le LLM ne voit que des films réels), consignes anti-invention dans les prompts, "
-         "indicateur de titres hors-corpus, et un critère « non-hallucination » noté par le juge. "
-         "Baisser la température réduit encore le risque."),
-        ("Comment industrialiser ?",
-         "FAISS (intégré) + embeddings persistés, Docker + CI (faits), monitoring coûts/latence "
-         "(instrumenté), supervision du taux d'hallucination, A/B testing des paramètres."),
+         "Ancrage RAG, consignes anti-invention, indicateur de titres hors-corpus, critère "
+         "« non-hallucination » du juge, température basse possible."),
+        ("Et les quotas / la résilience ?",
+         "Retry avec backoff exponentiel sur les 429 (limites par jour ET par minute), cache, et "
+         "mode dégradé sans clé."),
         ("Qu'avez-vous corrigé exactement ?",
-         "Le score de genre comparait des libellés français à une colonne anglaise → 30 % du score "
-         "morts. On utilise la colonne Categorie française avec matching insensible aux accents, "
-         f"verrouillé par des tests. Impact mesuré : +{NUM['gain_ndcg'].lstrip('+')} % de nDCG."),
-        ("Et la résilience / les quotas ?",
-         "Retry avec backoff exponentiel sur les erreurs 429 (le free tier limite par jour ET par "
-         "minute), cache des réponses, et un mode dégradé qui garde le cœur RAG fonctionnel sans clé."),
-        ("Sécurité / gouvernance ?",
-         "Clé API retirée du dépôt et rotée ; secrets via .env (gitignoré) ; safety_settings Gemini "
-         "configurés ; garde-fou anti-prompt-injection sur le texte libre utilisateur."),
-        ("RGPD ?",
-         "Réponses libres stockées localement (gitignorées) ; en production : consentement, durée de "
-         "conservation, anonymisation."),
+         "Le score de genre comparait du français à une colonne anglaise → 40 % du score inertes ; "
+         "on utilise la colonne Categorie (FR) + matching sans accents, verrouillé par des tests. "
+         f"Impact : {NUM['gain_ndcg']} % de nDCG."),
+        ("Comment industrialiser ?",
+         "FAISS + embeddings persistés (faits), Docker + CI (faits), monitoring coûts (instrumenté), "
+         "supervision du taux d'hallucination, A/B testing des paramètres."),
+        ("Sécurité / RGPD ?",
+         "Clé retirée du dépôt et rotée, secrets via .env, safety_settings, anti-injection ; données "
+         "utilisateur locales à encadrer (consentement, rétention)."),
     ]
     for q, a in qa:
         para(doc, "Q : " + q, bold=True); para(doc, "R : " + a)
 
-    h1(doc, "C. Mémo transposable aux autres projets")
-    for b in ["Relier chaque réalisation à une compétence : « ceci démontre Cx.y car… ».",
+    h1(doc, "F. Mémo transposable aux autres projets")
+    for b in ["Relier chaque réalisation à une compétence (« ceci démontre Cx.y car… »).",
               "Suivre la logique besoin → choix → réalisation → preuve → résultat → limites.",
-              "Apporter des PREUVES chiffrées (métriques, avant/après), pas des descriptions.",
+              "Toujours chiffrer les résultats et comparer à une baseline (avant/après).",
               "Assumer les limites et proposer des améliorations (le jury valorise le recul).",
-              "Toujours mentionner sécurité, reproductibilité (deps figées, .env.example, Docker), tests, CI.",
-              "Savoir expliquer chaque brique simplement (cf. section A)."]:
+              "Mentionner systématiquement sécurité, reproductibilité (deps figées, .env, Docker), tests, CI.",
+              "Savoir expliquer chaque brique simplement, puis en profondeur si on creuse (cf. sections A-D)."]:
         bullet(doc, b)
 
     doc.save(OUT / "antiseche_projet3.docx")
