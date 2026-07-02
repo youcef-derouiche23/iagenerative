@@ -20,6 +20,7 @@ from typing import List, Dict, Optional
 import google.generativeai as genai
 from dotenv import load_dotenv
 from src.cache_manager import CacheManager
+import tempfile
 
 load_dotenv()
 
@@ -166,7 +167,7 @@ class GenAIIntegration:
         )
 
         self.cache = CacheManager(
-            cache_dir="/tmp/.cache",
+            cache_dir=os.path.join(tempfile.gettempdir(), "aisca_cache"),
             max_size=max_cache_size,
             enabled=cache_enabled,
         )

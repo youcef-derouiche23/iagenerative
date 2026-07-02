@@ -35,7 +35,7 @@ class CacheManager:
         """
         self.enabled = enabled
         self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.cache_file = self.cache_dir / "genai_cache.json"
         self.max_size = max_size
         self.cache = self._load_cache()
