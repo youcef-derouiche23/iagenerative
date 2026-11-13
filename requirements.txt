@@ -1,25 +1,29 @@
+# torch en version CPU (la version CUDA est trop lourde pour Streamlit Cloud)
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Interface Web
-streamlit==1.31.0
+streamlit==1.45.1
 
 # NLP et Embeddings
-sentence-transformers==3.0.0
-transformers==4.44.0
-torch==2.9.0
+sentence-transformers==4.1.0
+transformers==4.57.6
+torch==2.9.0+cpu
 
 # IA Générative
-google-generativeai==0.5.4
+google-generativeai==0.8.6
+protobuf==5.29.6
 
 # Data Processing
-pandas==2.2.3
-numpy==1.26.4
+pandas==2.3.3
+numpy==2.4.6
 
 # Visualisation
 plotly==5.22.0
-matplotlib==3.8.4
+matplotlib==3.10.8
 seaborn==0.13.2
 
 # Calcul de similarité
-scikit-learn==1.4.2
+scikit-learn==1.8.0
 
 # Utilitaires
 python-dotenv==1.0.1
