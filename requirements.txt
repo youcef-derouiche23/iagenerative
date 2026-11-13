@@ -1,10 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 # Interface Web
 streamlit==1.31.0
 
 # NLP et Embeddings
 sentence-transformers==3.0.0
 transformers==4.44.0
-torch==2.9.0
+torch==2.9.0+cpu
 
 # IA Générative
 google-generativeai==0.5.4
